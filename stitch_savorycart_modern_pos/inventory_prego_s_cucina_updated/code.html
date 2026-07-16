@@ -1,0 +1,357 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800&amp;family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "on-background": "#1b1c1c",
+                "tertiary-fixed": "#e2e3e1",
+                "surface-container-high": "#e9e8e7",
+                "surface-container": "#efeded",
+                "on-error-container": "#93000a",
+                "on-secondary-fixed": "#1e1b1c",
+                "surface-container-lowest": "#ffffff",
+                "surface": "#fbf9f8",
+                "on-primary": "#ffffff",
+                "surface-container-highest": "#e4e2e2",
+                "on-tertiary-fixed-variant": "#454746",
+                "on-primary-fixed-variant": "#930000",
+                "on-primary-fixed": "#410000",
+                "on-tertiary-container": "#dcdcda",
+                "on-primary-container": "#ffd1ca",
+                "on-tertiary": "#ffffff",
+                "secondary": "#635d5e",
+                "on-tertiary-fixed": "#1a1c1b",
+                "secondary-fixed-dim": "#cdc4c5",
+                "tertiary": "#474948",
+                "background": "#fbf9f8",
+                "tertiary-fixed-dim": "#c6c7c5",
+                "surface-tint": "#c00000",
+                "surface-bright": "#fbf9f8",
+                "inverse-surface": "#303031",
+                "primary-fixed": "#ffdad4",
+                "tertiary-container": "#5f6160",
+                "on-surface": "#1b1c1c",
+                "outline": "#926f69",
+                "surface-container-low": "#f5f3f3",
+                "on-secondary-container": "#696364",
+                "on-surface-variant": "#5d3f3b",
+                "on-secondary": "#ffffff",
+                "primary-container": "#c40000",
+                "surface-dim": "#dbdad9",
+                "outline-variant": "#e7bdb6",
+                "inverse-primary": "#ffb4a8",
+                "inverse-on-surface": "#f2f0f0",
+                "error": "#ba1a1a",
+                "on-error": "#ffffff",
+                "primary-fixed-dim": "#ffb4a8",
+                "primary": "#970000",
+                "secondary-fixed": "#e9e0e1",
+                "surface-variant": "#e4e2e2",
+                "secondary-container": "#e9e0e1",
+                "error-container": "#ffdad6",
+                "on-secondary-fixed-variant": "#4b4546"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+        },
+        "spacing": {
+                "xl": "80px",
+                "margin-mobile": "16px",
+                "md": "24px",
+                "xs": "4px",
+                "lg": "48px",
+                "sm": "12px",
+                "container-max": "1200px",
+                "base": "8px",
+                "gutter": "24px"
+        },
+        "fontFamily": {
+                "headline-lg-mobile": [
+                        "Hanken Grotesk"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Hanken Grotesk"
+                ],
+                "headline-lg": [
+                        "Hanken Grotesk"
+                ],
+                "label-bold": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Hanken Grotesk"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "label-sm": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "headline-lg-mobile": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "display-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "label-bold": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-sm": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "fontWeight": "500"
+                        }
+                ]
+        }
+},
+    },
+  }
+}catch(_e){}</script></head><body class="bg-surface text-on-surface font-body-md antialiased overflow-hidden selection:bg-primary-container selection:text-on-primary-container h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim docked full-width top-0 bg-surface dark:bg-surface-dim flat no shadows transition-colors duration-200 flex justify-between items-center w-full px-md h-lg shrink-0 z-50 relative">
+<div class="flex items-center gap-4">
+<img alt="Prego's Cucina Logo" class="w-auto object-contain h-12" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAokrZLkzT9uypiZGi6Hdy3zuhR__JuRCojFZDkWGIlB-Q0ENe4XgDHIritLgPr7df9UTGJJWuGYeGxTb4u6pTGyzEHdvQjyRo68kqABOhmVBhh3U1F0Y7WWA3MmtkDXF9OCZW8kdU7s5Z_uZNAxPTC6tnspjAQyNNtb2XkcRmO5di8liDzkZztaIHVb0mlxkfwapyTVzTZlDcRSDyIPP_opNddYHhfsrJ6KrUefgcc-vb-tsILVTkFJXmWB8CDTlvvASM">
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-primary dark:text-primary-fixed-dim hover:bg-surface-container dark:hover:bg-surface-container-highest rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="wifi" data-weight="fill">wifi</span>
+</button>
+<button class="p-2 text-primary dark:text-primary-fixed-dim hover:bg-surface-container dark:hover:bg-surface-container-highest rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="schedule" data-weight="fill">schedule</span>
+</button>
+<button class="p-2 text-primary dark:text-primary-fixed-dim hover:bg-surface-container dark:hover:bg-surface-container-highest rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="account_circle" data-weight="fill">account_circle</span>
+</button>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden relative w-full h-full">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low dark:bg-inverse-surface border-r border-outline-variant dark:border-outline flat no shadows docked left-0 h-full w-64 fixed left-0 top-0 h-full flex flex-col pt-16 pb-8 z-40">
+<div class="px-6 py-4 flex items-center gap-4 mb-6">
+<div class="w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-surface-container-high">
+<img alt="Chef profile" class="object-cover w-full h-full" data-alt="Close up profile picture of a professional chef in a brightly lit kitchen. They are wearing a clean white chef coat and smiling subtly. The background is slightly blurred showing stainless steel kitchen equipment, matching the warm, inviting yet professional aesthetic of a busy food cart POS." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiulTFcoxY4ciSM3Tj8-Zjp5MVnihyipAy3uE4vdCm9S47hHo6NBPlxjH9ddFnEOovLHIgsHnFSyOsKk-vNOR2II5BGJS296KO-zj8Is3vs70NtLxxZRgrn3mLlOTsBDrZEPBTJ9Jfytbvdn2nqWQYtTEUPDoZplcFnfWph9r6ZIkL6FZbjp22WuPivMmSOGEB7BiaqG3fCvNoCB5yxgE58ZNQgv1xqjVfheEsZh7WPJs5DEBlS8URRw">
+</div>
+<div>
+<div class="text-body-lg font-body-lg font-semibold text-on-surface">Main Station</div>
+<div class="text-label-bold font-label-bold text-on-surface-variant uppercase">Prego's Cucina</div>
+</div>
+</div>
+<div class="flex-1 px-4 space-y-2">
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-tertiary-fixed-variant px-4 py-3 rounded-lg hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="point_of_sale" data-weight="fill">point_of_sale</span>
+<span class="text-label-bold font-label-bold uppercase">Register</span>
+</a>
+<a class="flex items-center gap-3 bg-primary-container text-on-primary-container rounded-lg px-4 py-3 scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2" data-weight="fill">inventory_2</span>
+<span class="text-label-bold font-label-bold uppercase">Inventory</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-tertiary-fixed-variant px-4 py-3 rounded-lg hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="restaurant_menu" data-weight="fill">restaurant_menu</span>
+<span class="text-label-bold font-label-bold uppercase">Menu Editor</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-tertiary-fixed-variant px-4 py-3 rounded-lg hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="analytics" data-weight="fill">analytics</span>
+<span class="text-label-bold font-label-bold uppercase">Analytics</span>
+</a>
+</div>
+<div class="px-4 space-y-2 mt-auto">
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-tertiary-fixed-variant px-4 py-3 rounded-lg hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="settings" data-weight="fill">settings</span>
+<span class="text-label-bold font-label-bold uppercase">Settings</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-tertiary-fixed-variant px-4 py-3 rounded-lg hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="help" data-weight="fill">help</span>
+<span class="text-label-bold font-label-bold uppercase">Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-64 pl-md pr-[360px] overflow-y-auto h-full pb-md pt-4">
+<div class="flex items-center justify-between mb-8">
+<h1 class="text-headline-lg font-headline-lg text-on-surface">Inventory Management</h1>
+<div class="flex gap-4">
+<button class="bg-surface-container text-on-surface border border-outline-variant px-6 py-3 rounded-lg text-label-bold font-label-bold uppercase flex items-center gap-2 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+                        FILTER
+                    </button>
+<button class="bg-primary text-on-primary px-6 py-3 rounded-lg text-label-bold font-label-bold uppercase flex items-center gap-2 hover:bg-primary-fixed-variant transition-colors shadow-sm">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                        NEW ITEM
+                    </button>
+</div>
+</div>
+<!-- Inventory Grid -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Item Card: Low Stock -->
+<div class="col-span-4 bg-surface-container-lowest border border-primary rounded-xl p-4 flex flex-col gap-4 relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
+<div class="absolute top-0 right-0 bg-primary text-on-primary text-[10px] font-bold px-3 py-1 rounded-bl-lg tracking-wider">LOW STOCK</div>
+<div class="flex items-start gap-4">
+<div class="w-16 h-16 rounded-lg bg-surface-container-high overflow-hidden shrink-0">
+<img alt="Pepperoni" class="object-cover w-full h-full" data-alt="Close up of a pile of raw, high-quality pepperoni slices resting on a clean wooden cutting board. The lighting is warm and bright, emphasizing the red and orange hues of the meat, suitable for a modern, inviting culinary interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-deRHTYhNgvDtLC-TAZduxXh7DkkJxA9ghaqXic5wjxMj55ukTZm8XdjUnpcPoLeI1DlKlTmkjhL8aHqOh7oguc6Q8Fs4LzDpeQABhLq85s-kVM9r7NpZn8fU_lwnGcWfoDg3RPyrHr_120kyvPrNFOAQmoiEYjEae4E5iKBvLTW7XpWOqwg-05Pf-XlbFyK9QbjOJXblbvBDbYeyI754j801bKZxzQixeHliRGLnsMeYY_14ArhUQg">
+</div>
+<div>
+<h3 class="text-body-lg font-body-lg font-bold text-on-surface mb-1">Pepperoni Slices</h3>
+<div class="text-label-bold font-label-bold text-on-surface-variant uppercase">Meat &amp; Deli</div>
+</div>
+</div>
+<div class="flex justify-between items-end mt-auto pt-4 border-t border-surface-variant">
+<div>
+<div class="text-sm text-primary font-medium">On Hand</div>
+<div class="text-headline-lg font-headline-lg text-primary">2.4 lbs</div>
+</div>
+<div class="text-right">
+<div class="text-sm text-on-surface-variant">Par Level</div>
+<div class="text-body-md font-body-md text-on-surface">10.0 lbs</div>
+</div>
+</div>
+</div>
+<!-- Item Card: Active Selection -->
+<div class="col-span-4 bg-surface-container-lowest border-2 border-primary-container rounded-xl p-4 flex flex-col gap-4 relative overflow-hidden cursor-pointer shadow-sm">
+<div class="flex items-start gap-4">
+<div class="w-16 h-16 rounded-lg bg-surface-container-high overflow-hidden shrink-0">
+<img alt="Flour" class="object-cover w-full h-full" data-alt="A sack of fine white 00 flour slightly open, spilling onto a dark grey countertop. Bright, clinical yet warm lighting highlights the texture of the flour, fitting perfectly into a clean, professional restaurant management aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJ1qktGn0s6XfampNhtctHrNAoJOuWpkMpr3_1LiRGV2DMP4iZYEKwsFT3TgkA3XUzZFlF9zjnCCgIQggIGCP4eVz-ausnyljJndlOx2YQQn1_A-Uz5B38k0kcaXrvANCcH_HUa2crFzAv3U2hbFD46D7Pv7LexAOUQ9Geo_2Kpb1X6h1pQyHP0fVv1p4iR-nKhTEgyQCDTOBH-bNpmZfm-yGbOnZYmmNf7eWWiPdHs91Nl2gp-3nU9A">
+</div>
+<div>
+<h3 class="text-body-lg font-body-lg font-bold text-on-surface mb-1">00 Pizza Flour</h3>
+<div class="text-label-bold font-label-bold text-on-surface-variant uppercase">Dry Goods</div>
+</div>
+</div>
+<div class="flex justify-between items-end mt-auto pt-4 border-t border-surface-variant">
+<div>
+<div class="text-sm text-on-surface-variant">On Hand</div>
+<div class="text-headline-lg font-headline-lg text-on-surface">45.0 lbs</div>
+</div>
+<div class="text-right">
+<div class="text-sm text-on-surface-variant">Par Level</div>
+<div class="text-body-md font-body-md text-on-surface">50.0 lbs</div>
+</div>
+</div>
+</div>
+<!-- Item Card: Healthy Stock -->
+<div class="col-span-4 bg-surface-container-lowest border border-outline-variant rounded-xl p-4 flex flex-col gap-4 relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
+<div class="flex items-start gap-4">
+<div class="w-16 h-16 rounded-lg bg-surface-container-high overflow-hidden shrink-0">
+<div class="w-full h-full flex items-center justify-center text-on-surface-variant bg-surface-dim">
+<span class="material-symbols-outlined text-3xl" data-icon="egg_alt">egg_alt</span>
+</div>
+</div>
+<div>
+<h3 class="text-body-lg font-body-lg font-bold text-on-surface mb-1">Fresh Eggs</h3>
+<div class="text-label-bold font-label-bold text-on-surface-variant uppercase">Dairy</div>
+</div>
+</div>
+<div class="flex justify-between items-end mt-auto pt-4 border-t border-surface-variant">
+<div>
+<div class="text-sm text-on-surface-variant">On Hand</div>
+<div class="text-headline-lg font-headline-lg text-on-surface">14 doz</div>
+</div>
+<div class="text-right">
+<div class="text-sm text-on-surface-variant">Par Level</div>
+<div class="text-body-md font-body-md text-on-surface">10 doz</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Right Panel (Item Detail View) - Acts as the Side Ticket structure -->
+<aside class="bg-inverse-surface dark:bg-surface-container-lowest shadow-md docked right-0 h-full w-[360px] fixed right-0 top-0 h-full flex flex-col z-50 pt-16">
+<div class="px-6 py-6 border-b border-surface-container/20 flex-shrink-0">
+<div class="flex justify-between items-start mb-2">
+<h2 class="text-headline-md font-headline-md text-on-primary-container">00 Pizza Flour</h2>
+<button class="text-on-surface-variant hover:text-on-primary-container transition-colors">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</div>
+<div class="text-label-bold font-label-bold text-on-surface-variant uppercase mb-6">SKU: FLR-00-50LB</div>
+<div class="bg-surface-container-lowest/10 rounded-lg p-4 mb-4">
+<div class="flex justify-between items-center mb-2">
+<span class="text-body-md font-body-md text-on-surface-variant">Current Stock</span>
+<span class="text-headline-md font-headline-md text-on-primary-container">45.0 lbs</span>
+</div>
+<div class="w-full bg-surface-container-highest/20 rounded-full h-2 mb-1">
+<div class="bg-primary-container h-2 rounded-full" style="width: 90%"></div>
+</div>
+<div class="flex justify-between text-xs text-on-surface-variant">
+<span class="">Reorder Point: 15lbs</span>
+<span class="">Par: 50lbs</span>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+<!-- Modifiers Section -->
+<div>
+<h3 class="text-body-lg font-body-lg font-bold text-on-primary-container mb-3 border-b border-surface-container/20 pb-2">Linked Modifiers</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center text-on-surface-variant">
+<span class="">Extra Dough (+$1.50)</span>
+<span class="material-symbols-outlined text-sm" data-icon="link">link</span>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant">
+<span class="">Deep Dish Base</span>
+<span class="material-symbols-outlined text-sm" data-icon="link">link</span>
+</div>
+</div>
+</div>
+<!-- Vendor Info -->
+<div class="">
+<h3 class="text-body-lg font-body-lg font-bold text-on-primary-container mb-3 border-b border-surface-container/20 pb-2">Vendor Details</h3>
+<div class="space-y-2 text-on-surface-variant text-sm">
+<p class=""><strong class="text-on-primary-container font-medium">Supplier:</strong> Metro Foods Dist.</p>
+<p class=""><strong class="text-on-primary-container font-medium">Last Price:</strong> $45.00 / 50lb bag</p>
+<p class=""><strong class="text-on-primary-container font-medium">Lead Time:</strong> 2 Days</p>
+</div>
+</div>
+</div>
+<div class="p-6 border-t border-surface-container/20 bg-inverse-surface mt-auto flex-shrink-0">
+</div></aside></div></body></html>

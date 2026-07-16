@@ -1,0 +1,356 @@
+<!DOCTYPE html><html class="h-full" lang="en"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;800&amp;family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "on-background": "#1b1c1c",
+                "tertiary-fixed": "#e2e3e1",
+                "surface-container-high": "#e9e8e7",
+                "surface-container": "#efeded",
+                "on-error-container": "#93000a",
+                "on-secondary-fixed": "#1e1b1c",
+                "surface-container-lowest": "#ffffff",
+                "surface": "#fbf9f8",
+                "on-primary": "#ffffff",
+                "surface-container-highest": "#e4e2e2",
+                "on-tertiary-fixed-variant": "#454746",
+                "on-primary-fixed-variant": "#930000",
+                "on-primary-fixed": "#410000",
+                "on-tertiary-container": "#dcdcda",
+                "on-primary-container": "#ffd1ca",
+                "on-tertiary": "#ffffff",
+                "secondary": "#635d5e",
+                "on-tertiary-fixed": "#1a1c1b",
+                "secondary-fixed-dim": "#cdc4c5",
+                "tertiary": "#474948",
+                "background": "#fbf9f8",
+                "tertiary-fixed-dim": "#c6c7c5",
+                "surface-tint": "#c00000",
+                "surface-bright": "#fbf9f8",
+                "inverse-surface": "#303031",
+                "primary-fixed": "#ffdad4",
+                "tertiary-container": "#5f6160",
+                "on-surface": "#1b1c1c",
+                "outline": "#926f69",
+                "surface-container-low": "#f5f3f3",
+                "on-secondary-container": "#696364",
+                "on-surface-variant": "#5d3f3b",
+                "on-secondary": "#ffffff",
+                "primary-container": "#c40000",
+                "surface-dim": "#dbdad9",
+                "outline-variant": "#e7bdb6",
+                "inverse-primary": "#ffb4a8",
+                "inverse-on-surface": "#f2f0f0",
+                "error": "#ba1a1a",
+                "on-error": "#ffffff",
+                "primary-fixed-dim": "#ffb4a8",
+                "primary": "#970000",
+                "secondary-fixed": "#e9e0e1",
+                "surface-variant": "#e4e2e2",
+                "secondary-container": "#e9e0e1",
+                "error-container": "#ffdad6",
+                "on-secondary-fixed-variant": "#4b4546"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+        },
+        "spacing": {
+                "xl": "80px",
+                "margin-mobile": "16px",
+                "md": "24px",
+                "xs": "4px",
+                "lg": "48px",
+                "sm": "12px",
+                "container-max": "1200px",
+                "base": "8px",
+                "gutter": "24px",
+                "ticket-width": "360px",
+                "margin": "24px",
+                "touch-target": "48px"
+        },
+        "fontFamily": {
+                "headline-lg-mobile": [
+                        "Hanken Grotesk"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Hanken Grotesk"
+                ],
+                "headline-lg": [
+                        "Hanken Grotesk"
+                ],
+                "label-bold": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Hanken Grotesk"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "label-sm": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "headline-lg-mobile": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "display-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "label-bold": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-sm": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "fontWeight": "500"
+                        }
+                ]
+        }
+},
+    },
+  }
+}catch(_e){}</script></head><body class="bg-surface h-full flex overflow-hidden font-body-md text-on-surface antialiased">
+<!-- Top App Bar (Mobile / Small Screen Pivot) -->
+<header class="md:hidden flex justify-between items-center w-full px-margin h-touch-target bg-surface text-primary border-b border-outline-variant fixed top-0 left-0 z-50">
+<img alt="Prego's Cucina Logo" class="h-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJ9de8ea2tgrB4UHFs4r2FxpS_WDzQJQYD3HCA0LK5t1NY8JIiRNGOmep9pP8XGy79ZEN6b9e8TZ3Etx_TaB00iEjEn_aM1nKmG5-B-yFL6zY3ACbkFaVrFYqhJaYMwLZSfrQi39__uLG9BhWu4u8vV6GGfCNMimxf57qgt-zaLbaMX5LoBYhEVRAcUKSFVV2LdanTQyyA7Md2ARfyxdQ7LCKwa9Zo2LPjq81Tu8siQNINzh-HL65KZEfAFPJpe1bj9ic">
+<div class="flex gap-4">
+<span class="material-symbols-outlined hover:bg-surface-container p-2 rounded-full cursor-pointer transition-colors duration-200">wifi</span>
+<span class="material-symbols-outlined hover:bg-surface-container p-2 rounded-full cursor-pointer transition-colors duration-200">schedule</span>
+<span class="material-symbols-outlined hover:bg-surface-container p-2 rounded-full cursor-pointer transition-colors duration-200">account_circle</span>
+</div>
+</header>
+<!-- SideNavBar (Main Navigation) -->
+<nav class="hidden md:flex flex-col bg-surface-container-low border-r border-outline-variant fixed left-0 top-0 h-full w-64 pt-8 pb-8 z-40">
+<!-- Brand / Header -->
+<div class="px-6 mb-8 flex flex-col gap-4">
+<img alt="Prego's Cucina Logo" class="h-12 object-contain self-start" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkWU_9VLEooDzBoPtZLZDvu5G45YmtusY4Dx6TcwOqEyIqgSPOPq8FG5l_k1WkJwRsiOJ5k9QM-fKNAkH63IMuFtryzZ-8tPrtEjiVW5cATRt7LA14TLDO_GDo_F5GIq9uYDqT2TBGGEDkpirT_hiOdF5AHmLXNGKX3gMpejAoTmMoUZ-jFl9Rm5KLfju5TM3d_YZJWrUYLegA6W3as4LTedqNNQ_LqUlUEx9h5XbJxD7cRzY_z75FEey8YKzEI_YAEW4">
+<div class="flex flex-col gap-1">
+<div class="text-headline-md font-headline-md text-on-surface">Main Station</div>
+<div class="text-body-md font-body-md text-on-surface-variant">Prego's Cucina</div>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 px-4 space-y-2">
+<!-- Active Tab: Register -->
+<button class="w-full flex items-center gap-3 bg-primary-container text-on-primary rounded-lg px-4 py-3 scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">point_of_sale</span>
+<span class="text-label-bold font-label-bold uppercase">Register</span>
+</button>
+<!-- In-->
+<button class="w-full flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-high rounded-lg scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="text-label-bold font-label-bold uppercase">Inventory</span>
+</button>
+<button class="w-full flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-high rounded-lg scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined">restaurant_menu</span>
+<span class="text-label-bold font-label-bold uppercase">Menu Editor</span>
+</button>
+<button class="w-full flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-high rounded-lg scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-label-bold font-label-bold uppercase">Analytics</span>
+</button>
+</div>
+<!-- Footer Links -->
+<div class="px-4 mt-auto space-y-2 border-t border-outline-variant pt-4">
+<button class="w-full flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-high rounded-lg scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-label-bold font-label-bold uppercase">Settings</span>
+</button>
+<button class="w-full flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-high rounded-lg scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined">help</span>
+<span class="text-label-bold font-label-bold uppercase">Support</span>
+</button>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col md:ml-64 md:mr-[360px] pt-16 md:pt-0 h-full overflow-hidden bg-surface relative z-10">
+<!-- Category Navigation -->
+<div class="px-margin py-6 border-b border-outline-variant shrink-0 bg-surface">
+<div class="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+<button class="px-6 py-3 bg-inverse-surface text-inverse-on-surface rounded-full text-label-bold font-label-bold uppercase whitespace-nowrap shadow-sm">Pizza</button>
+<button class="px-6 py-3 bg-surface-container text-on-surface rounded-full text-label-bold font-label-bold uppercase whitespace-nowrap hover:bg-surface-container-high transition-colors">Pasta</button>
+<button class="px-6 py-3 bg-surface-container text-on-surface rounded-full text-label-bold font-label-bold uppercase whitespace-nowrap hover:bg-surface-container-high transition-colors">Chicken</button>
+<button class="px-6 py-3 bg-surface-container text-on-surface rounded-full text-label-bold font-label-bold uppercase whitespace-nowrap hover:bg-surface-container-high transition-colors">Sides</button>
+<button class="px-6 py-3 bg-surface-container text-on-surface rounded-full text-label-bold font-label-bold uppercase whitespace-nowrap hover:bg-surface-container-high transition-colors">Drinks</button>
+</div>
+</div>
+<!-- Menu Grid -->
+<div class="flex-1 overflow-y-auto p-margin bg-surface">
+<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-gutter pb-32">
+<!-- Menu Item Card 1 -->
+<button class="menu-card bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex flex-col text-left transition-all hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-primary-container/20 group h-48 md:h-56 relative">
+<div class="h-2/3 w-full relative">
+<div class="bg-cover bg-center w-full h-full" data-alt="A high-quality, professional food photograph of a fresh Margherita pizza straight from a wood-fired oven. The crust is blistered and slightly charred. Bright red tomato sauce, creamy white mozzarella pools, and fresh green basil leaves are visible. Warm, inviting lighting emphasizing the artisanal quality, set against a neutral, clean modern kitchen background." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuASrqIXVZc3XDAQBTUdPHS0AcbVUx13LUhSKn_6nh7Dcd4r2UJ8c3D0Ts71re9k_Q9z2asznMwDnUPW5evOP1GdtI7ENP4wPoMguWOpzXA9Q0bkPsNURrIjp9qZfMh39Gr7EzukqZBu7HIc7AtY0wlwbApb9wiYZly0iKwGamR2mDbbYWvyMLjssyUTZLtqRAPab6A-TJFRG974IoXI88_eeA57vZZGwyS53lxBMDjJgSVM7G0g-XWltA')"></div>
+<div class="absolute inset-0 bg-on-background/10 group-hover:bg-transparent transition-colors"></div>
+<div class="absolute top-2 right-2 bg-surface/90 backdrop-blur px-3 py-1 rounded-full">
+<span class="text-label-bold font-label-bold uppercase text-on-surface">₱16</span>
+</div>
+</div>
+<div class="p-3 h-1/3 flex items-center justify-center bg-surface-container-lowest">
+<span class="text-body-lg font-body-lg text-on-surface text-center line-clamp-2">Margherita</span>
+</div>
+<!-- Selected State Overlay (hidden by default) -->
+<div class="absolute inset-0 border-4 border-primary-container rounded-xl opacity-0 transition-opacity pointer-events-none"></div>
+</button>
+<!-- Menu Item Card 2 -->
+<button class="menu-card bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex flex-col text-left transition-all hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-primary-container/20 group h-48 md:h-56 relative">
+<div class="h-2/3 w-full relative">
+<div class="bg-cover bg-center w-full h-full" data-alt="A close-up food shot of a Pepperoni pizza. Crispy curled pepperoni cups with slightly charred edges holding small pools of flavorful oil. Melted golden cheese stretches slightly. The lighting is crisp and natural, highlighting the rich red and orange tones of the pepperoni against a minimalist light cream surface." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAmNdfe12HFiXITmibS7jjcaCt1ynCZeGpd6QH2YoulBEYqGusebpYZuTQRLjr76grxIVh-EhcZ67oopluBVlyknhKGEfaf0WR7K_2n2MCYBCUUhQRrYC3PhsMtONWmx5tshRfhFFSqYxFnOe4MS_CJRNG2EM_Apvocj5MbpVYmashxgboHtAvE2Zm15OPM58r107ziXz26EZoE09uU95r9Wa4z5WqVuXPpuNS9jU-qRpF068t3-rCCzg')"></div>
+<div class="absolute inset-0 bg-on-background/10 group-hover:bg-transparent transition-colors"></div>
+<div class="absolute top-2 right-2 bg-surface/90 backdrop-blur px-3 py-1 rounded-full">
+<span class="text-label-bold font-label-bold uppercase text-on-surface">₱19</span>
+</div>
+</div>
+<div class="p-3 h-1/3 flex items-center justify-center bg-surface-container-lowest">
+<span class="text-body-lg font-body-lg text-on-surface text-center line-clamp-2">Pepperoni</span>
+</div>
+</button>
+<!-- Menu Item Card 3 -->
+<button class="menu-card bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex flex-col text-left transition-all hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-primary-container/20 group h-48 md:h-56 relative">
+<div class="h-2/3 w-full relative bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-outline">local_pizza</span>
+<div class="absolute inset-0 bg-on-background/5 group-hover:bg-transparent transition-colors"></div>
+<div class="absolute top-2 right-2 bg-surface/90 backdrop-blur px-3 py-1 rounded-full">
+<span class="text-label-bold font-label-bold uppercase text-on-surface">₱22</span>
+</div>
+</div>
+<div class="p-3 h-1/3 flex items-center justify-center bg-surface-container-lowest">
+<span class="text-body-lg font-body-lg text-on-surface text-center line-clamp-2">Truffle Mushroom</span>
+</div>
+</button>
+<!-- Menu Item Card 4 -->
+<button class="menu-card bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex flex-col text-left transition-all hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-primary-container/20 group h-48 md:h-56 relative">
+<div class="h-2/3 w-full relative bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-outline">local_pizza</span>
+<div class="absolute inset-0 bg-on-background/5 group-hover:bg-transparent transition-colors"></div>
+<div class="absolute top-2 right-2 bg-surface/90 backdrop-blur px-3 py-1 rounded-full">
+<span class="text-label-bold font-label-bold uppercase text-on-surface">₱18</span>
+</div>
+</div>
+<div class="p-3 h-1/3 flex items-center justify-center bg-surface-container-lowest">
+<span class="text-body-lg font-body-lg text-on-surface text-center line-clamp-2">Hawaiian</span>
+</div>
+</button>
+</div>
+</div>
+</main>
+<!-- SideNavBar (Sidebar Ticket) -->
+<aside class="hidden md:flex flex-col bg-inverse-surface fixed right-0 top-0 h-full w-ticket-width shadow-md z-50">
+<!-- Header -->
+<div class="px-6 pt-8 pb-6 border-b border-outline/30 flex justify-between items-start shrink-0">
+<div>
+<h2 class="text-headline-lg font-headline-lg text-inverse-on-surface">Order #1024</h2>
+<p class="text-body-md font-body-md text-surface-dim mt-1">Active Session</p>
+</div>
+<button class="p-2 text-surface-dim hover:text-inverse-on-surface transition-colors rounded-full hover:bg-on-background/20">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<!-- Ticket Items List -->
+<div class="flex-1 overflow-y-auto px-6 py-4 space-y-4 no-scrollbar">
+<!-- Ticket Item 1 -->
+<div class="group relative bg-on-background/10 rounded-lg p-4 hover:bg-on-background/20 transition-colors">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-3">
+<span class="bg-surface-container text-on-surface rounded w-8 h-8 flex items-center justify-center text-body-md font-label-bold uppercase font-bold">1</span>
+<h3 class="text-body-md font-body-md font-bold text-inverse-on-surface">Margherita Pizza</h3>
+</div>
+<span class="text-body-md font-body-md font-bold text-inverse-on-surface">₱16.00</span>
+</div>
+<!-- Modifiers -->
+<div class="pl-11 space-y-1">
+<div class="flex justify-between text-body-md font-body-md text-surface-dim">
+<span>₱16.00</span>
+<span>₱2.00</span>
+</div>
+<div class="flex justify-between text-body-md font-body-md text-surface-dim">
+<span class="text-error-container">₱16.00</span>
+<span>₱16.00</span>
+</div>
+</div>
+<!-- Swipe to delete hint (visual only) -->
+<div class="absolute inset-y-0 right-0 flex items-center pr-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-error-container hover:text-error bg-on-background/40 p-2 rounded-full backdrop-blur">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</div>
+<!-- Ticket Item 2 -->
+<div class="group relative bg-on-background/10 rounded-lg p-4 hover:bg-on-background/20 transition-colors">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-3">
+<span class="bg-surface-container text-on-surface rounded w-8 h-8 flex items-center justify-center text-body-md font-label-bold uppercase font-bold">2</span>
+<h3 class="text-body-md font-body-md font-bold text-inverse-on-surface">Sparkling Water</h3>
+</div>
+<span class="text-body-md font-body-md font-bold text-inverse-on-surface">₱6.00</span>
+</div>
+</div>
+</div>
+<!-- Totals & Checkout -->
+<div class="bg-on-background/40 p-6 shrink-0 rounded-t-xl mt-auto">
+<div class="space-y-3 mb-6">
+<div class="flex justify-between text-body-lg font-body-lg text-surface-dim">
+<span>Subtotal</span>
+<span>₱24.00</span>
+</div>
+<div class="flex justify-between text-body-lg font-body-lg text-surface-dim"><span>VAT (12%)</span><span>₱2.88</span></div>
+<div class="flex justify-between items-end border-t border-outline/30 pt-4 mt-2">
+<span class="text-headline-md font-headline-md text-inverse-on-surface">Total</span>
+<span class="text-display-lg font-display-lg text-primary-fixed font-bold">₱26.88</span>
+</div>
+</div>
+<div class="space-y-4"><div class="flex gap-2"><button class="flex-1 py-3 rounded-lg bg-primary-container text-on-primary font-label-bold uppercase text-center hover:bg-primary transition-colors">CASH</button><button class="flex-1 py-3 rounded-lg bg-on-background/20 text-inverse-on-surface font-label-bold uppercase text-center hover:bg-on-background/30 transition-colors">GCASH</button></div><div class="grid grid-cols-4 gap-2"><button class="py-2 bg-on-background/10 text-inverse-on-surface rounded text-label-bold uppercase hover:bg-on-background/20 transition-colors">₱50</button><button class="py-2 bg-on-background/10 text-inverse-on-surface rounded text-label-bold uppercase hover:bg-on-background/20 transition-colors">₱100</button><button class="py-2 bg-on-background/10 text-inverse-on-surface rounded text-label-bold uppercase hover:bg-on-background/20 transition-colors">₱500</button><button class="py-2 bg-on-background/10 text-inverse-on-surface rounded text-label-bold uppercase hover:bg-on-background/20 transition-colors">₱1000</button></div><div class="flex justify-between items-center bg-on-background/20 p-3 rounded-lg"><span class="text-surface-dim text-body-md">Change</span><span class="text-primary-fixed text-headline-md font-bold">₱0.00</span></div><button class="w-full bg-primary-container text-on-primary rounded-lg py-4 text-headline-md font-headline-md tracking-wide hover:bg-primary active:scale-98 transition-all shadow-lg flex items-center justify-center gap-2"><span>COMPLETE CHECKOUT</span><span class="material-symbols-outlined">check_circle</span></button></div>
+</div>
+</aside>
+</body></html>

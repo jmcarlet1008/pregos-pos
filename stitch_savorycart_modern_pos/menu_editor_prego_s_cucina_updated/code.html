@@ -1,0 +1,366 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;800&amp;family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "on-background": "#1b1c1c",
+                "tertiary-fixed": "#e2e3e1",
+                "surface-container-high": "#e9e8e7",
+                "surface-container": "#efeded",
+                "on-error-container": "#93000a",
+                "on-secondary-fixed": "#1e1b1c",
+                "surface-container-lowest": "#ffffff",
+                "surface": "#fbf9f8",
+                "on-primary": "#ffffff",
+                "surface-container-highest": "#e4e2e2",
+                "on-tertiary-fixed-variant": "#454746",
+                "on-primary-fixed-variant": "#930000",
+                "on-primary-fixed": "#410000",
+                "on-tertiary-container": "#dcdcda",
+                "on-primary-container": "#ffd1ca",
+                "on-tertiary": "#ffffff",
+                "secondary": "#635d5e",
+                "on-tertiary-fixed": "#1a1c1b",
+                "secondary-fixed-dim": "#cdc4c5",
+                "tertiary": "#474948",
+                "background": "#fbf9f8",
+                "tertiary-fixed-dim": "#c6c7c5",
+                "surface-tint": "#c00000",
+                "surface-bright": "#fbf9f8",
+                "inverse-surface": "#303031",
+                "primary-fixed": "#ffdad4",
+                "tertiary-container": "#5f6160",
+                "on-surface": "#1b1c1c",
+                "outline": "#926f69",
+                "surface-container-low": "#f5f3f3",
+                "on-secondary-container": "#696364",
+                "on-surface-variant": "#5d3f3b",
+                "on-secondary": "#ffffff",
+                "primary-container": "#c40000",
+                "surface-dim": "#dbdad9",
+                "outline-variant": "#e7bdb6",
+                "inverse-primary": "#ffb4a8",
+                "inverse-on-surface": "#f2f0f0",
+                "error": "#ba1a1a",
+                "on-error": "#ffffff",
+                "primary-fixed-dim": "#ffb4a8",
+                "primary": "#970000",
+                "secondary-fixed": "#e9e0e1",
+                "surface-variant": "#e4e2e2",
+                "secondary-container": "#e9e0e1",
+                "error-container": "#ffdad6",
+                "on-secondary-fixed-variant": "#4b4546"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+        },
+        "spacing": {
+                "xl": "80px",
+                "margin-mobile": "16px",
+                "md": "24px",
+                "xs": "4px",
+                "lg": "48px",
+                "sm": "12px",
+                "container-max": "1200px",
+                "base": "8px",
+                "gutter": "24px",
+                "stack-sm": "8px",
+                "stack-md": "16px",
+                "margin": "24px",
+                "touch-target": "48px",
+                "card-gap": "12px"
+        },
+        "fontFamily": {
+                "headline-lg-mobile": [
+                        "Hanken Grotesk"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Hanken Grotesk"
+                ],
+                "headline-lg": [
+                        "Hanken Grotesk"
+                ],
+                "label-bold": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Hanken Grotesk"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "label-sm": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "headline-lg-mobile": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "display-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "label-bold": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-sm": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "fontWeight": "500"
+                        }
+                ]
+        }
+},
+    },
+  }
+}catch(_e){}</script></head><body class="bg-surface text-on-surface font-body-md min-h-screen antialiased flex">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low dark:bg-inverse-surface border-r border-outline-variant dark:border-outline docked left-0 h-full w-64 fixed left-0 top-0 h-full flex flex-col pt-16 pb-8 z-40">
+<div class="px-margin mb-8">
+<img alt="Prego's Cucina Logo" class="h-16 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjUWMYGjHddhURz6QLCwWyNN3HNPEeHrmGvnHR4LAqnV_weP8VIk4UbAnl5KUcDmmyKZuS70nr_94Kvde_giPwpRIbz4uFvSTWw2YGdpn6TSx9ynNQs3UUZE5lZhTC3mu-rFVdXMNzI1pwy32x6E1OOcyiRnKXtS6hZfL-deiP5SvDnHf0jTU_mc5X9tIiW-diSz3LmZSqg8fPknR5XJLswIv-fili5ji5w4Qx_wSpoJcJq9UFd5wbKjRScEOtDLYDM0U">
+</div>
+<div class="px-4 mb-6">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden">
+<img alt="Chef profile" class="w-full h-full object-cover" data-alt="A close up, professional headshot of a chef wearing a clean white chef's coat, standing in a brightly lit, modern commercial kitchen. Soft, natural lighting highlights the chef's welcoming expression. The background is slightly blurred, emphasizing the clean, warm tones of the culinary environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAp7sV07vET6YNeWlgeobgaDMh9ohh2I1mn9M4u6-4Af0D_Q7mXCJPblrur20_7XTuSsVYQJyfbEiuF5F5_5g-JgGiNR3ZnkXIllvBFtw-tQZahCvUvq98TZrz-c6bx6B35pgBdpksw7Hd2Y-R0XWtL4Nl_--F1OJ0e5lksXjaXx2jtpyzzO5i7ounBqKxHPK3xz6qpfj2gieROy8S_sHp0KaNny7lT-cY7lJfu500BiSy_F_ZFuOpk_A">
+</div>
+<div>
+<div class="font-headline-md text-headline-md text-sm uppercase">Main Station</div>
+<div class="text-on-surface-variant text-xs font-body-md">Prego's Cucina</div>
+</div>
+</div>
+</div>
+<ul class="flex flex-col gap-2 px-2 flex-grow">
+<li class="">
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-tertiary-fixed-variant px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150 rounded-lg text-label-bold font-label-bold uppercase tracking-wider" href="#">
+<span class="material-symbols-outlined">point_of_sale</span>
+                    Register
+                </a>
+</li>
+<li class="">
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-tertiary-fixed-variant px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150 rounded-lg text-label-bold font-label-bold uppercase tracking-wider" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+                    Inventory
+                </a>
+</li>
+<li class="">
+<a class="flex items-center gap-3 bg-primary-container text-on-primary-container rounded-lg px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150 text-label-bold font-label-bold uppercase tracking-wider" href="#">
+<span class="material-symbols-outlined fill" style="font-variation-settings: 'FILL' 1;">restaurant_menu</span>
+                    Menu Editor
+                </a>
+</li>
+<li class="">
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-tertiary-fixed-variant px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150 rounded-lg text-label-bold font-label-bold uppercase tracking-wider" href="#">
+<span class="material-symbols-outlined">analytics</span>
+                    Analytics
+                </a>
+</li>
+</ul>
+<div class="mt-auto px-2">
+<ul class="flex flex-col gap-2">
+<li class="">
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-tertiary-fixed-variant px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150 rounded-lg text-label-bold font-label-bold uppercase tracking-wider" href="#">
+<span class="material-symbols-outlined">settings</span>
+                        Settings
+                    </a>
+</li>
+<li class="">
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-tertiary-fixed-variant px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150 rounded-lg text-label-bold font-label-bold uppercase tracking-wider" href="#">
+<span class="material-symbols-outlined">help</span>
+                        Support
+                    </a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="ml-64 flex-1 flex flex-col h-screen overflow-hidden">
+<!-- TopAppBar Contextual (Admin) -->
+<header class="bg-surface dark:bg-surface-dim flat no shadows flex justify-between items-center w-full px-margin h-[72px] shrink-0 border-b border-surface-container-highest">
+<div class="flex items-center gap-4">
+<h2 class="text-headline-lg font-headline-lg text-on-surface uppercase tracking-wider">Menu Editor</h2>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:bg-surface-container p-2 rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="bg-primary text-on-primary px-6 py-3 rounded-lg text-label-bold font-label-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                    NEW ITEM
+                </button>
+</div>
+</header>
+<!-- Editor Workspace -->
+<div class="flex-1 overflow-auto p-margin flex gap-gutter bg-surface">
+<!-- Item List (Left Panel) -->
+<section class="w-1/3 flex flex-col gap-stack-md">
+<!-- Category Filter -->
+<div class="flex gap-2 overflow-x-auto pb-2 shrink-0">
+<button class="bg-on-surface text-surface px-4 py-2 rounded-full text-label-bold font-label-bold uppercase tracking-wider whitespace-nowrap">All Items</button>
+<button class="bg-surface-container-highest text-on-surface px-4 py-2 rounded-full text-label-bold font-label-bold uppercase tracking-wider whitespace-nowrap hover:bg-surface-variant transition-colors">Mains</button>
+<button class="bg-surface-container-highest text-on-surface px-4 py-2 rounded-full text-label-bold font-label-bold uppercase tracking-wider whitespace-nowrap hover:bg-surface-variant transition-colors">Sides</button>
+<button class="bg-surface-container-highest text-on-surface px-4 py-2 rounded-full text-label-bold font-label-bold uppercase tracking-wider whitespace-nowrap hover:bg-surface-variant transition-colors">Drinks</button>
+</div>
+<!-- List Items -->
+<div class="flex flex-col gap-2 overflow-y-auto pr-2">
+<!-- Active Item -->
+<div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex items-center gap-4 cursor-pointer relative shadow-sm ring-2 ring-primary-container ring-offset-2 ring-offset-surface">
+<div class="w-16 h-16 rounded-lg bg-surface-container overflow-hidden shrink-0">
+<img alt="Hearth Burger" class="w-full h-full object-cover" data-alt="A top-down view of a perfectly plated artisanal burger on a rustic wooden board. The burger features a brioche bun, melted cheddar, crisp lettuce, and a thick, juicy patty. The lighting is warm and inviting, highlighting the textures of the food against a clean, minimal background, suitable for a high-end food cart menu." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqzZe_hUK5BDdCvS1iB6JSkf50D8rqM96ufqjiW2l3bx692EhVVHzS4AcxRBrsKxgr3OfIrYO36tt1UdmRvVyvk9y5SG0rVbfp20dlgdJR-0l2HU6geS4dL_HQXUflnFhV0EnkdA-l4bSa_kHFj6cCNEAZO9glRQfHG-5aHzcyobjnCZemr-IYdZYiL9BHHsI0ErXGacoxMF1niyAHTzUhs-DZIji2C40nKHHyJeWF7-mUzYCNGgBpwg">
+</div>
+<div class="flex-1">
+<h3 class="text-body-lg font-body-lg text-on-surface m-0 leading-tight">Hearth Burger</h3>
+<p class="text-label-sm font-label-sm uppercase tracking-wider text-secondary mt-1">Mains</p>
+</div>
+<div class="text-right">
+<span class="text-body-lg font-body-lg text-on-surface">₱14.00</span>
+</div>
+</div>
+<!-- Inactive Item -->
+<div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex items-center gap-4 cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="w-16 h-16 rounded-lg bg-surface-container overflow-hidden shrink-0">
+<img alt="Truffle Fries" class="w-full h-full object-cover" data-alt="A close-up shot of a steaming bowl of truffle fries, generously coated in parmesan cheese and fresh herbs, served in a simple white ceramic bowl. The scene is brightly lit with a soft, natural glow that emphasizes the golden crispness of the fries. The setting reflects a clean, modern culinary aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAolSrHzYwPUYhf-ZvbTHPDq5JddFhCkavGI75tTh3JUdDS5QIunpAt-GVtSwUhAlPtnAUZsQFWKnZO9jiatd-vBRM2RQlEWGsfJOZPdBhCIXQmJQrkoYKvCzU4EDr7RKa4V4ZM_t6s_Ck9VRTMdA72WNL2uzpiKYe_JjSHiFjgPxtp2FaebolOehQIlTwCtBZsMfdvDMwcMIvWl6JKgBAVBgiGg_lu5l9LqOhmgQ5nvvnVD-hjPF4wwQ">
+</div>
+<div class="flex-1">
+<h3 class="text-body-lg font-body-lg text-on-surface m-0 leading-tight">Truffle Fries</h3>
+<p class="text-label-sm font-label-sm uppercase tracking-wider text-secondary mt-1">Sides</p>
+</div>
+<div class="text-right">
+<span class="text-body-lg font-body-lg text-on-surface">₱8.50</span>
+</div>
+</div>
+<!-- Inactive Item -->
+<div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex items-center gap-4 cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="w-16 h-16 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-outline text-3xl">image</span>
+</div>
+<div class="flex-1">
+<h3 class="text-body-lg font-body-lg text-on-surface m-0 leading-tight">Seasonal Salad</h3>
+<p class="text-label-sm font-label-sm uppercase tracking-wider text-secondary mt-1">Sides</p>
+</div>
+<div class="text-right">
+<span class="text-body-lg font-body-lg text-on-surface">₱11.00</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Edit Form (Right Panel) -->
+<section class="flex-1 bg-surface-container-lowest border border-surface-container-highest rounded-xl p-margin flex flex-col overflow-y-auto">
+<div class="flex justify-between items-start mb-8">
+<h3 class="text-headline-md font-headline-md text-on-surface uppercase tracking-wider">Edit Item</h3>
+<div class="flex gap-2">
+<button class="text-error hover:bg-error-container p-3 rounded-lg transition-colors flex items-center justify-center h-touch-target w-touch-target">
+<span class="material-symbols-outlined">delete</span>
+</button>
+<button class="bg-surface-container text-on-surface px-6 py-3 rounded-lg text-label-bold font-label-bold uppercase tracking-wider hover:bg-surface-variant transition-colors h-touch-target">CANCEL</button>
+<button class="bg-primary text-on-primary px-6 py-3 rounded-lg text-label-bold font-label-bold uppercase tracking-wider hover:opacity-90 transition-opacity h-touch-target">SAVE CHANGES</button>
+</div>
+</div>
+<form class="flex flex-col gap-6 max-w-3xl">
+<!-- Image Upload -->
+<div class="flex gap-6 items-end">
+<div class="w-48 h-48 rounded-xl bg-surface-container border-2 border-dashed border-outline-variant flex flex-col items-center justify-center cursor-pointer hover:bg-surface-container-high transition-colors relative overflow-hidden group">
+<img alt="Hearth Burger" class="absolute inset-0 w-full h-full object-cover group-hover:opacity-50 transition-opacity" data-alt="A top-down view of a perfectly plated artisanal burger on a rustic wooden board. The burger features a brioche bun, melted cheddar, crisp lettuce, and a thick, juicy patty. The lighting is warm and inviting, highlighting the textures of the food against a clean, minimal background, suitable for a high-end food cart menu." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWwW0GoYUFkpbBAlvCqBUWOiAjxV-xPeTOcHEIQdOLGmoAevOnJ_spPQq4Oe9P6bLj7LdjYzK2Gj8L_M1fE9mPtJz7NdHfu4q9Eg1rLDzek5xeFzBso4mbrn8XghSZ2gYhoK222rEmooBvi6qBkmnTffWljqQMc9URdZ9XHkV7BrP9kIxZb4Emo_aW3ZcNRyaB6xwxwarMVFRooXDP1QYQNNnUHWqklet6bqDcTWABSvAtOV3oZUdUMA">
+<div class="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-on-surface/20">
+<span class="material-symbols-outlined text-surface text-3xl mb-2">add_a_photo</span>
+<span class="text-label-bold font-label-bold uppercase tracking-wider text-surface">CHANGE PHOTO</span>
+</div>
+</div>
+<div class="flex-1">
+<label class="block text-label-bold font-label-bold uppercase tracking-wider text-on-surface-variant mb-2">Item Name</label>
+<input class="w-full bg-surface-bright border border-outline-variant rounded-lg p-4 text-body-lg font-body-lg text-on-surface focus:border-primary focus:ring-1 focus:ring-primary h-touch-target" type="text" value="Hearth Burger">
+</div>
+</div>
+<div class="grid grid-cols-2 gap-6">
+<div>
+<label class="block text-label-bold font-label-bold uppercase tracking-wider text-on-surface-variant mb-2">Category</label>
+<select class="w-full bg-surface-bright border border-outline-variant rounded-lg p-4 text-body-lg font-body-lg text-on-surface focus:border-primary focus:ring-1 focus:ring-primary h-touch-target appearance-none">
+<option>Mains</option>
+<option>Sides</option>
+<option>Drinks</option>
+</select>
+</div>
+<div>
+<label class="block text-label-bold font-label-bold uppercase tracking-wider text-on-surface-variant mb-2">Price (₱)</label>
+<input class="w-full bg-surface-bright border border-outline-variant rounded-lg p-4 text-body-lg font-body-lg text-on-surface focus:border-primary focus:ring-1 focus:ring-primary h-touch-target" step="0.50" type="number" value="14.00">
+</div>
+</div>
+<div>
+<label class="block text-label-bold font-label-bold uppercase tracking-wider text-on-surface-variant mb-2">Description (Optional)</label>
+<textarea class="w-full bg-surface-bright border border-outline-variant rounded-lg p-4 text-body-md font-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary resize-none" rows="3">Signature grass-fed beef patty, aged cheddar, caramelized onions, house sauce on a toasted brioche bun.</textarea>
+</div>
+<!-- Modifiers Section -->
+<div class="border-t border-surface-container-highest pt-6 mt-2">
+<div class="flex justify-between items-center mb-4">
+<h4 class="text-body-lg font-body-lg text-on-surface font-bold">Modifiers &amp; Options</h4>
+<button class="text-primary hover:bg-surface-container p-2 rounded-lg text-label-bold font-label-bold uppercase tracking-wider flex items-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-sm">add</span> ADD GROUP
+                            </button>
+</div>
+<div class="bg-surface border border-outline-variant rounded-lg p-4 mb-4">
+<div class="flex justify-between items-center mb-3 pb-2 border-b border-surface-container-highest">
+<div class="font-body-lg text-body-lg">Meat Temperature</div>
+<div class="text-label-sm font-label-sm uppercase tracking-wider text-secondary">Required (Pick 1)</div>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="bg-surface-container-highest text-on-surface px-3 py-1 rounded-full text-sm font-body-md flex items-center gap-1">Rare <button class="material-symbols-outlined text-sm hover:text-error">close</button></span>
+<span class="bg-surface-container-highest text-on-surface px-3 py-1 rounded-full text-sm font-body-md flex items-center gap-1">Med Rare <button class="material-symbols-outlined text-sm hover:text-error">close</button></span>
+<span class="bg-surface-container-highest text-on-surface px-3 py-1 rounded-full text-sm font-body-md flex items-center gap-1">Medium <button class="material-symbols-outlined text-sm hover:text-error">close</button></span>
+<span class="bg-surface-container-highest text-on-surface px-3 py-1 rounded-full text-sm font-body-md flex items-center gap-1">Well Done <button class="material-symbols-outlined text-sm hover:text-error">close</button></span>
+</div>
+</div>
+</div>
+</form>
+</section>
+</div>
+</main>
+</body></html>
