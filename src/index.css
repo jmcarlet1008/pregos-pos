@@ -38,3 +38,19 @@
     min-width: 48px;
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-receipt,
+  .print-receipt * {
+    visibility: visible;
+  }
+  .print-receipt {
+    position: fixed;
+    inset: 0;
+    margin: 0;
+    border: none !important;
+  }
+}

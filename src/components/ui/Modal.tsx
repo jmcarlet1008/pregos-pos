@@ -30,7 +30,7 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
-        className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-lg bg-surface-container-lowest shadow-lg"
+        className="flex max-h-full w-full max-w-[448px] flex-col overflow-hidden rounded-lg bg-surface-container-lowest shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-surface-dim px-md py-sm">

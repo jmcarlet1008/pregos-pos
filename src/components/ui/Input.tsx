@@ -13,7 +13,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const inputId = id ?? autoId
 
   return (
-    <div className="flex flex-col gap-xs">
+    <div className={['flex flex-col gap-xs', className].filter(Boolean).join(' ')}>
       {label && (
         <label htmlFor={inputId} className="text-label-bold text-on-surface">
           {label}
@@ -23,13 +23,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         ref={ref}
         id={inputId}
         className={[
-          'min-h-touch rounded-md border bg-surface-container-lowest px-md text-body-md text-on-surface',
+          'min-h-touch w-full rounded-md border bg-surface-container-lowest px-md text-body-md text-on-surface',
           'placeholder:text-on-surface-variant/60',
           'focus:outline-none focus:ring-0',
           error
             ? 'border-error focus:border-2 focus:border-error'
             : 'border-outline focus:border-2 focus:border-primary',
-          className,
         ]
           .filter(Boolean)
           .join(' ')}

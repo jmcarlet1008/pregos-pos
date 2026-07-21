@@ -56,7 +56,8 @@ export interface Order extends BaseEntity {
   status: OrderStatus
   total: number // sum of line totals, VAT-inclusive, no separate VAT line
   shift_id: string | null
-  user_id: string | null
+  user_id: string | null // cashier who completed the sale
+  completed_at: string | null // set once, at completion — unlike updated_at, not overwritten by a later void
 }
 
 export interface OrderLine extends BaseEntity {
@@ -116,6 +117,16 @@ export interface StockAdjustment extends BaseEntity {
   note: string | null
 }
 
+export interface BusinessSettings extends BaseEntity {
+  name: string
+  logo_url: string | null
+  address: string
+  phone: string
+}
+
+/** Fixed primary key — there is only ever one BusinessSettings record. */
+export const BUSINESS_SETTINGS_ID = 'singleton'
+
 class PregosDB extends Dexie {
   categories!: EntityTable<Category, 'id'>
   products!: EntityTable<Product, 'id'>
@@ -128,6 +139,7 @@ class PregosDB extends Dexie {
   users!: EntityTable<User, 'id'>
   shifts!: EntityTable<Shift, 'id'>
   stockAdjustments!: EntityTable<StockAdjustment, 'id'>
+  businessSettings!: EntityTable<BusinessSettings, 'id'>
 
   constructor() {
     super('pregos-pos')
@@ -141,9 +153,24 @@ class PregosDB extends Dexie {
       orderLines: 'id, order_id, product_id, sync_status',
       orderLineModifiers: 'id, order_line_id, modifier_option_id, sync_status',
       payments: 'id, order_id, method, status, sync_status',
-      users: 'id, role, active, sync_status',
+      users: 'id, pin, role, active, sync_status',
       shifts: 'id, user_id, status, sync_status',
       stockAdjustments: 'id, product_id, order_id, reason, sync_status',
+    })
+
+    this.version(2).stores({
+      categories: 'id, sort_order, active, sync_status',
+      products: 'id, category_id, active, sort_order, sync_status',
+      modifierGroups: 'id, product_id, sort_order, sync_status',
+      modifierOptions: 'id, modifier_group_id, sort_order, sync_status',
+      orders: 'id, order_number, status, shift_id, sync_status',
+      orderLines: 'id, order_id, product_id, sync_status',
+      orderLineModifiers: 'id, order_line_id, modifier_option_id, sync_status',
+      payments: 'id, order_id, method, status, sync_status',
+      users: 'id, pin, role, active, sync_status',
+      shifts: 'id, user_id, status, sync_status',
+      stockAdjustments: 'id, product_id, order_id, reason, sync_status',
+      businessSettings: 'id',
     })
   }
 }

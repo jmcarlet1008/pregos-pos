@@ -1,4 +1,4 @@
-import { db, type Category, type ModifierGroup, type ModifierOption, type Product } from './schema'
+import { BUSINESS_SETTINGS_ID, db, type BusinessSettings, type Category, type ModifierGroup, type ModifierOption, type Product, type User } from './schema'
 
 function id() {
   return crypto.randomUUID()
@@ -9,8 +9,40 @@ function timestamps() {
   return { created_at: now, updated_at: now }
 }
 
+/** Seeds sample staff PINs on first run. No-op if users already exist. */
+async function seedUsers() {
+  const existing = await db.users.count()
+  if (existing > 0) return
+
+  const users: User[] = [
+    { id: id(), name: 'Maria Santos', pin: '1234', role: 'cashier', active: true, sync_status: 'pending', ...timestamps() },
+    { id: id(), name: 'Chef Prego', pin: '9999', role: 'manager', active: true, sync_status: 'pending', ...timestamps() },
+  ]
+  await db.users.bulkAdd(users)
+}
+
+/** Seeds the default business profile on first run. No-op if a record already exists. */
+async function seedBusinessSettings() {
+  const existing = await db.businessSettings.count()
+  if (existing > 0) return
+
+  const settings: BusinessSettings = {
+    id: BUSINESS_SETTINGS_ID,
+    name: "Prego's Cucina",
+    logo_url: null,
+    address: '',
+    phone: '',
+    sync_status: 'pending',
+    ...timestamps(),
+  }
+  await db.businessSettings.add(settings)
+}
+
 /** Seeds a small sample menu on first run. No-op if categories already exist. */
 export async function seedDatabase() {
+  await seedUsers()
+  await seedBusinessSettings()
+
   const existing = await db.categories.count()
   if (existing > 0) return
 
