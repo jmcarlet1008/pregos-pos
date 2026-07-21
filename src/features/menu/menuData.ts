@@ -247,4 +247,4 @@ export async function reorderModifierOptions(orderedIds: string[]): Promise<void
 
 // ---------- Images ----------
 
-export { fileToDataUrl } from '../../lib/files'
+export { storeProductImage } from '../../lib/imageStorage'

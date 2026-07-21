@@ -1,4 +1,5 @@
 export * from './Button'
+export * from './CachedImage'
 export * from './Card'
 export * from './Input'
 export * from './Modal'

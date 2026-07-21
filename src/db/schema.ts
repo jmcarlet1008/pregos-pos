@@ -127,6 +127,27 @@ export interface BusinessSettings extends BaseEntity {
 /** Fixed primary key — there is only ever one BusinessSettings record. */
 export const BUSINESS_SETTINGS_ID = 'singleton'
 
+/** Tracks the sync engine's pull cursor. Single row, key = SYNC_META_ID. */
+export interface SyncMeta {
+  id: string
+  last_synced_at: string | null
+}
+
+export const SYNC_META_ID = 'singleton'
+
+/**
+ * Local cache of remote (Supabase Storage) product images, keyed by the URL stored
+ * on Product.image_url, so photos still render while offline. Also holds
+ * not-yet-uploaded images under a `local:<uuid>` pseudo-URL key when a photo is
+ * taken while offline — the sync engine uploads those and rewrites the key once
+ * back online.
+ */
+export interface ImageCacheEntry {
+  url: string
+  blob: Blob
+  cached_at: string
+}
+
 class PregosDB extends Dexie {
   categories!: EntityTable<Category, 'id'>
   products!: EntityTable<Product, 'id'>
@@ -140,6 +161,8 @@ class PregosDB extends Dexie {
   shifts!: EntityTable<Shift, 'id'>
   stockAdjustments!: EntityTable<StockAdjustment, 'id'>
   businessSettings!: EntityTable<BusinessSettings, 'id'>
+  syncMeta!: EntityTable<SyncMeta, 'id'>
+  imageCache!: EntityTable<ImageCacheEntry, 'url'>
 
   constructor() {
     super('pregos-pos')
@@ -171,6 +194,42 @@ class PregosDB extends Dexie {
       shifts: 'id, user_id, status, sync_status',
       stockAdjustments: 'id, product_id, order_id, reason, sync_status',
       businessSettings: 'id',
+    })
+
+    this.version(3).stores({
+      categories: 'id, sort_order, active, sync_status',
+      products: 'id, category_id, active, sort_order, sync_status',
+      modifierGroups: 'id, product_id, sort_order, sync_status',
+      modifierOptions: 'id, modifier_group_id, sort_order, sync_status',
+      orders: 'id, order_number, status, shift_id, sync_status',
+      orderLines: 'id, order_id, product_id, sync_status',
+      orderLineModifiers: 'id, order_line_id, modifier_option_id, sync_status',
+      payments: 'id, order_id, method, status, sync_status',
+      users: 'id, pin, role, active, sync_status',
+      shifts: 'id, user_id, status, sync_status',
+      stockAdjustments: 'id, product_id, order_id, reason, sync_status',
+      businessSettings: 'id',
+      syncMeta: 'id',
+      imageCache: 'url, cached_at',
+    })
+
+    // v3 left businessSettings un-indexed on sync_status; the sync engine queries every
+    // table with .where('sync_status'), which Dexie requires an index for.
+    this.version(4).stores({
+      categories: 'id, sort_order, active, sync_status',
+      products: 'id, category_id, active, sort_order, sync_status',
+      modifierGroups: 'id, product_id, sort_order, sync_status',
+      modifierOptions: 'id, modifier_group_id, sort_order, sync_status',
+      orders: 'id, order_number, status, shift_id, sync_status',
+      orderLines: 'id, order_id, product_id, sync_status',
+      orderLineModifiers: 'id, order_line_id, modifier_option_id, sync_status',
+      payments: 'id, order_id, method, status, sync_status',
+      users: 'id, pin, role, active, sync_status',
+      shifts: 'id, user_id, status, sync_status',
+      stockAdjustments: 'id, product_id, order_id, reason, sync_status',
+      businessSettings: 'id, sync_status',
+      syncMeta: 'id',
+      imageCache: 'url, cached_at',
     })
   }
 }

@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
 import type { Category, Product } from '../../db'
-import { Button, Input, Switch } from '../../components/ui'
+import { Button, CachedImage, Input, Switch } from '../../components/ui'
 import { ModifierGroupsEditor } from './ModifierGroupsEditor'
-import { createProduct, fileToDataUrl, updateProduct, type ProductInput } from './menuData'
+import { createProduct, storeProductImage, updateProduct, type ProductInput } from './menuData'
 
 export interface ProductFormProps {
   product: Product | null
@@ -76,8 +76,10 @@ export function ProductForm({ product, categories, defaultCategoryId, onClose, o
     if (!file) return
     setUploading(true)
     try {
-      const dataUrl = await fileToDataUrl(file)
-      update('image_url', dataUrl)
+      const url = await storeProductImage(file)
+      update('image_url', url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not upload photo.')
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -148,11 +150,12 @@ export function ProductForm({ product, categories, defaultCategoryId, onClose, o
       <div className="flex flex-col gap-md md:flex-row">
         <div className="flex shrink-0 flex-col items-center gap-xs">
           <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-lg border border-surface-dim bg-surface-container">
-            {form.image_url ? (
-              <img src={form.image_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <span className="px-xs text-center text-label-sm text-on-surface-variant">No photo</span>
-            )}
+            <CachedImage
+              url={form.image_url}
+              alt=""
+              className="h-full w-full object-cover"
+              fallback={<span className="px-xs text-center text-label-sm text-on-surface-variant">No photo</span>}
+            />
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
           <Button variant="secondary" size="md" disabled={uploading} onClick={() => fileInputRef.current?.click()}>

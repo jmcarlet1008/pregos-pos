@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSyncStatus } from '../../sync/useSyncStatus'
 import { MenuIcon, WifiIcon, WifiOffIcon } from './icons'
 
 export interface TopBarProps {
@@ -17,25 +18,6 @@ function useClock() {
   return now
 }
 
-function useOnlineStatus() {
-  const [online, setOnline] = useState(() => navigator.onLine)
-  useEffect(() => {
-    function goOnline() {
-      setOnline(true)
-    }
-    function goOffline() {
-      setOnline(false)
-    }
-    window.addEventListener('online', goOnline)
-    window.addEventListener('offline', goOffline)
-    return () => {
-      window.removeEventListener('online', goOnline)
-      window.removeEventListener('offline', goOffline)
-    }
-  }, [])
-  return online
-}
-
 export function TopBar({
   stationName = 'Front Counter',
   userName = 'Not signed in',
@@ -43,7 +25,7 @@ export function TopBar({
   onToggleSidebar,
 }: TopBarProps) {
   const now = useClock()
-  const online = useOnlineStatus()
+  const sync = useSyncStatus()
   const time = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 
   return (
@@ -66,11 +48,12 @@ export function TopBar({
         <div
           className={[
             'flex items-center gap-xs text-label-bold',
-            online ? 'text-on-surface-variant' : 'text-error',
+            !sync.online || sync.status === 'error' ? 'text-error' : 'text-on-surface-variant',
           ].join(' ')}
+          title={sync.lastError ?? undefined}
         >
-          {online ? <WifiIcon width={18} height={18} /> : <WifiOffIcon width={18} height={18} />}
-          <span>{online ? 'Online' : 'Offline'}</span>
+          {sync.online ? <WifiIcon width={18} height={18} /> : <WifiOffIcon width={18} height={18} />}
+          <span>{sync.label}</span>
         </div>
 
         <span className="text-body-md tabular-nums text-on-surface">{time}</span>

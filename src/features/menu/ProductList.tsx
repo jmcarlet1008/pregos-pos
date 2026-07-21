@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Category, Product } from '../../db'
 import {
   Button,
+  CachedImage,
   DragHandleIcon,
   Input,
   Modal,
@@ -55,11 +56,12 @@ function ProductRow({
       )}
 
       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-container">
-        {product.image_url ? (
-          <img src={product.image_url} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <span className="text-label-sm text-on-surface-variant">No photo</span>
-        )}
+        <CachedImage
+          url={product.image_url}
+          alt=""
+          className="h-full w-full object-cover"
+          fallback={<span className="text-label-sm text-on-surface-variant">No photo</span>}
+        />
       </div>
 
       <button type="button" onClick={onEdit} className="min-w-0 flex-1 text-left">

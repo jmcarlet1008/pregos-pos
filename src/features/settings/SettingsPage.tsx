@@ -1,6 +1,7 @@
 import { Card } from '../../components/ui'
 import { BackupRestoreSection } from './BackupRestoreSection'
 import { BusinessInfoSection } from './BusinessInfoSection'
+import { CloudBackupRestoreSection } from './CloudBackupRestoreSection'
 import { UsersSection } from './UsersSection'
 
 export function SettingsPage() {
@@ -11,6 +12,7 @@ export function SettingsPage() {
       <BusinessInfoSection />
       <UsersSection />
       <BackupRestoreSection />
+      <CloudBackupRestoreSection />
 
       <Card padding="md" className="flex flex-col gap-xs">
         <h2 className="text-headline-md text-on-surface">Support</h2>
