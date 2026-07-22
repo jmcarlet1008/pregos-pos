@@ -15,17 +15,23 @@ export function Switch({ checked, onChange, label, disabled }: SwitchProps) {
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={[
-        'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors',
+        'touch-target relative inline-flex w-12 shrink-0 items-center justify-center',
         'disabled:pointer-events-none disabled:opacity-40',
-        checked ? 'bg-primary' : 'bg-surface-container-high',
       ].join(' ')}
     >
       <span
         className={[
-          'inline-block h-5 w-5 transform rounded-full bg-surface-container-lowest shadow transition-transform',
-          checked ? 'translate-x-6' : 'translate-x-1',
+          'relative inline-flex h-7 w-12 items-center rounded-full transition-colors',
+          checked ? 'bg-primary' : 'bg-surface-container-high',
         ].join(' ')}
-      />
+      >
+        <span
+          className={[
+            'inline-block h-5 w-5 transform rounded-full bg-surface-container-lowest shadow transition-transform',
+            checked ? 'translate-x-6' : 'translate-x-1',
+          ].join(' ')}
+        />
+      </span>
     </button>
   )
 }

@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
+import { useBlocker } from 'react-router-dom'
 import { db, type ModifierOption, type PaymentMethod, type Product } from '../../db'
 import { Button, Modal } from '../../components/ui'
 import { useAuth } from '../auth/AuthContext'
@@ -16,6 +17,7 @@ import type { CompletedPaymentInput } from '../payments/PaymentProvider'
 import { OUT_OF_STOCK_MODE } from './config'
 import { addOrderLine, createOrder, deleteOrderIfEmpty, deleteOrderLine, incrementSimpleLine, stockStatus, updateOrderLine } from './registerData'
 import { completeOrder } from './checkoutData'
+import { vibrate } from '../../lib/haptics'
 
 const STORAGE_KEY = 'pregos-pos:register:current-order-id'
 
@@ -76,6 +78,23 @@ export function RegisterPage() {
     .filter((o) => o.id !== currentOrderId)
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
 
+  const hasUnfinishedOrder = screen !== 'receipt' && (currentOrder?.total ?? 0) > 0
+
+  useEffect(() => {
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (!hasUnfinishedOrder) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnfinishedOrder])
+
+  const navBlocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasUnfinishedOrder && currentLocation.pathname !== nextLocation.pathname,
+  )
+
   async function switchCurrentOrder(newOrderId: string) {
     const previousId = currentOrderId
     setCurrentOrderId(newOrderId)
@@ -102,6 +121,7 @@ export function RegisterPage() {
       setAddModalProduct(product)
       return
     }
+    vibrate('tap')
     const merged = await incrementSimpleLine(currentOrderId, product.id)
     if (!merged) {
       await addOrderLine(currentOrderId, product, [], 1)
@@ -154,6 +174,7 @@ export function RegisterPage() {
     setSubmittingPayment(true)
     try {
       await completeOrder(currentOrderId, input, user?.id ?? null)
+      vibrate('success')
       sessionStorage.removeItem(STORAGE_KEY)
       setCompletedOrderId(currentOrderId)
       setCurrentOrderId(null)
@@ -304,6 +325,29 @@ export function RegisterPage() {
         >
           <p className="text-body-md text-on-surface">
             {pendingOutOfStock.name} is currently out of stock. Add it to the order anyway?
+          </p>
+        </Modal>
+      )}
+
+      {navBlocker.state === 'blocked' && (
+        <Modal
+          open
+          onClose={() => navBlocker.reset?.()}
+          title="Leave this order?"
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => navBlocker.reset?.()}>
+                Stay
+              </Button>
+              <Button variant="danger" onClick={() => navBlocker.proceed?.()}>
+                Leave Order
+              </Button>
+            </>
+          }
+        >
+          <p className="text-body-md text-on-surface">
+            Order #{currentOrder?.order_number ?? ''} has items but hasn't been paid yet. It'll stay saved as a held
+            order — you can resume it later from "Held".
           </p>
         </Modal>
       )}

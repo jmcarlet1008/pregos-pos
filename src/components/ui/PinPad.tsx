@@ -1,3 +1,5 @@
+import { vibrate } from '../../lib/haptics'
+
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'back'] as const
 
 export interface PinPadProps {
@@ -10,16 +12,19 @@ export interface PinPadProps {
 export function PinPad({ value, onChange, maxLength = 4, onComplete }: PinPadProps) {
   function pressDigit(digit: string) {
     if (value.length >= maxLength) return
+    vibrate('tap')
     const next = value + digit
     onChange(next)
     if (next.length === maxLength) onComplete?.(next)
   }
 
   function pressBack() {
+    vibrate('tap')
     onChange(value.slice(0, -1))
   }
 
   function pressClear() {
+    vibrate('tap')
     onChange('')
   }
 

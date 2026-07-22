@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { db, type ModifierGroup, type ModifierOption, type Product } from '../../db'
 import { Button, Modal } from '../../components/ui'
 import { formatCurrency } from '../../lib/currency'
+import { vibrate } from '../../lib/haptics'
 
 interface GroupWithOptions extends ModifierGroup {
   options: ModifierOption[]
@@ -102,7 +103,14 @@ export function ProductOptionsModal({
           )}
           <div className="ml-auto flex items-center gap-sm">
             <span className="text-body-lg font-bold text-on-surface">{formatCurrency(total)}</span>
-            <Button variant="primary" disabled={!isValid} onClick={() => onConfirm(selectedOptions, quantity)}>
+            <Button
+              variant="primary"
+              disabled={!isValid}
+              onClick={() => {
+                vibrate('tap')
+                onConfirm(selectedOptions, quantity)
+              }}
+            >
               {mode === 'add' ? 'Add to Cart' : 'Save Changes'}
             </Button>
           </div>

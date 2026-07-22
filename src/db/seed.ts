@@ -34,33 +34,47 @@ function timestamps() {
   return { created_at: now, updated_at: now }
 }
 
-/** Seeds sample staff PINs on first run. No-op if users already exist. */
+/**
+ * Seeds sample staff PINs on first run. No-op if users already exist.
+ *
+ * The count-check and the insert run inside one 'rw' transaction so the two steps are
+ * atomic. IndexedDB serializes readwrite transactions with overlapping object-store
+ * scope across every connection to the database (including other tabs/dev-server
+ * instances hitting the same origin) — so a second caller's count() can't observe
+ * "empty" until the first caller's insert has fully committed. Checking outside the
+ * transaction leaves a gap where two callers both read count() === 0 before either
+ * has written, and both then try to insert — this is what caused the duplicate rows.
+ */
 async function seedUsers() {
-  const existing = await db.users.count()
-  if (existing > 0) return
+  await db.transaction('rw', db.users, async () => {
+    const existing = await db.users.count()
+    if (existing > 0) return
 
-  const users: User[] = [
-    { id: SEED_IDS.userMaria, name: 'Maria Santos', pin: '1234', role: 'cashier', active: true, sync_status: 'pending', ...timestamps() },
-    { id: SEED_IDS.userChef, name: 'Chef Prego', pin: '9999', role: 'manager', active: true, sync_status: 'pending', ...timestamps() },
-  ]
-  await db.users.bulkAdd(users)
+    const users: User[] = [
+      { id: SEED_IDS.userMaria, name: 'Maria Santos', pin: '1234', role: 'cashier', active: true, sync_status: 'pending', ...timestamps() },
+      { id: SEED_IDS.userChef, name: 'Chef Prego', pin: '9999', role: 'manager', active: true, sync_status: 'pending', ...timestamps() },
+    ]
+    await db.users.bulkAdd(users)
+  })
 }
 
 /** Seeds the default business profile on first run. No-op if a record already exists. */
 async function seedBusinessSettings() {
-  const existing = await db.businessSettings.count()
-  if (existing > 0) return
+  await db.transaction('rw', db.businessSettings, async () => {
+    const existing = await db.businessSettings.count()
+    if (existing > 0) return
 
-  const settings: BusinessSettings = {
-    id: BUSINESS_SETTINGS_ID,
-    name: "Prego's Cucina",
-    logo_url: null,
-    address: '',
-    phone: '',
-    sync_status: 'pending',
-    ...timestamps(),
-  }
-  await db.businessSettings.add(settings)
+    const settings: BusinessSettings = {
+      id: BUSINESS_SETTINGS_ID,
+      name: "Prego's Cucina",
+      logo_url: null,
+      address: '',
+      phone: '',
+      sync_status: 'pending',
+      ...timestamps(),
+    }
+    await db.businessSettings.add(settings)
+  })
 }
 
 /** Seeds a small sample menu on first run. No-op if categories already exist. */
@@ -68,13 +82,13 @@ export async function seedDatabase() {
   await seedUsers()
   await seedBusinessSettings()
 
-  const existing = await db.categories.count()
-  if (existing > 0) return
-
   await db.transaction(
     'rw',
     [db.categories, db.products, db.modifierGroups, db.modifierOptions],
     async () => {
+      const existing = await db.categories.count()
+      if (existing > 0) return
+
       const categories: Category[] = [
         { id: SEED_IDS.categoryPizza, name: 'Pizza', sort_order: 0, active: true, sync_status: 'pending', ...timestamps() },
         { id: SEED_IDS.categoryPasta, name: 'Pasta', sort_order: 1, active: true, sync_status: 'pending', ...timestamps() },
