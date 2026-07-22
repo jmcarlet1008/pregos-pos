@@ -1,12 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
 import { useBlocker } from 'react-router-dom'
-import { db, type ModifierOption, type PaymentMethod, type Product } from '../../db'
+import { db, type DiscountType, type ModifierOption, type PaymentMethod, type Product } from '../../db'
 import { Button, Modal } from '../../components/ui'
 import { useAuth } from '../auth/AuthContext'
 import { CategoryTabs } from './CategoryTabs'
 import { ProductGrid } from './ProductGrid'
-import { CartPanel, type CartLineWithModifiers } from './CartPanel'
+import { CartPanel, loadLines, type CartLineWithModifiers } from './CartPanel'
 import { ProductOptionsModal } from './ProductOptionsModal'
 import { HeldOrdersModal } from './HeldOrdersModal'
 import { CheckoutScreen } from './CheckoutScreen'
@@ -17,6 +17,8 @@ import type { CompletedPaymentInput } from '../payments/PaymentProvider'
 import { OUT_OF_STOCK_MODE } from './config'
 import { addOrderLine, createOrder, deleteOrderIfEmpty, deleteOrderLine, incrementSimpleLine, stockStatus, updateOrderLine } from './registerData'
 import { completeOrder } from './checkoutData'
+import { addOrderDiscount } from './discountData'
+import { SeniorPwdDiscountModal } from './SeniorPwdDiscountModal'
 import { vibrate } from '../../lib/haptics'
 
 const STORAGE_KEY = 'pregos-pos:register:current-order-id'
@@ -30,6 +32,7 @@ export function RegisterPage() {
   const [addModalProduct, setAddModalProduct] = useState<Product | null>(null)
   const [editingLine, setEditingLine] = useState<CartLineWithModifiers | null>(null)
   const [heldModalOpen, setHeldModalOpen] = useState(false)
+  const [discountModalOpen, setDiscountModalOpen] = useState(false)
   const [pendingOutOfStock, setPendingOutOfStock] = useState<Product | null>(null)
   const [blockedProduct, setBlockedProduct] = useState<Product | null>(null)
   const [screen, setScreen] = useState<Screen>('menu')
@@ -72,6 +75,12 @@ export function RegisterPage() {
     () => (currentOrderId ? db.orders.get(currentOrderId) : undefined),
     [currentOrderId],
   )
+
+  const currentOrderLines = useLiveQuery(
+    () => (currentOrderId ? loadLines(currentOrderId) : undefined),
+    [currentOrderId],
+  ) ?? []
+  const availableDiscountLines = currentOrderLines.filter((line) => !line.order_discount_id)
 
   const activeOrders = useLiveQuery(() => db.orders.where('status').equals('active').toArray()) ?? []
   const heldOrders = activeOrders
@@ -162,6 +171,17 @@ export function RegisterPage() {
     if (!editingLine) return
     await deleteOrderLine(editingLine.id)
     setEditingLine(null)
+  }
+
+  async function handleDiscountConfirm(
+    discountType: DiscountType,
+    holderName: string,
+    idNumber: string,
+    lineIds: string[],
+  ) {
+    if (!currentOrderId) return
+    await addOrderDiscount(currentOrderId, discountType, holderName, idNumber, lineIds)
+    setDiscountModalOpen(false)
   }
 
   function handlePay(method: PaymentMethod) {
@@ -259,8 +279,16 @@ export function RegisterPage() {
           onLineTap={setEditingLine}
           onAddItem={() => setScreen('menu')}
           onPay={handlePay}
+          onOpenDiscountModal={() => setDiscountModalOpen(true)}
         />
       )}
+
+      <SeniorPwdDiscountModal
+        open={discountModalOpen}
+        availableLines={availableDiscountLines}
+        onClose={() => setDiscountModalOpen(false)}
+        onConfirm={handleDiscountConfirm}
+      />
 
       {screen === 'payment' && currentOrder && (
         <PaymentScreen

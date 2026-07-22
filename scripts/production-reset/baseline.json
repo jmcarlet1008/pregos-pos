@@ -1,0 +1,13 @@
+{
+  "payments": 4,
+  "order_line_modifiers": 1,
+  "order_lines": 10,
+  "stock_adjustments": 11,
+  "orders": 12,
+  "categories": 4,
+  "products": 6,
+  "modifier_groups": 2,
+  "modifier_options": 5,
+  "users": 2,
+  "business_settings": 1
+}

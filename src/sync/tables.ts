@@ -28,6 +28,7 @@ export const SYNC_TABLES: SyncTableConfig[] = [
   { name: 'users', local: db.users, remote: 'users', conflictAware: false },
   { name: 'shifts', local: db.shifts, remote: 'shifts', conflictAware: false },
   { name: 'orders', local: db.orders, remote: 'orders', conflictAware: true },
+  { name: 'orderDiscounts', local: db.orderDiscounts, remote: 'order_discounts', conflictAware: false },
   { name: 'orderLines', local: db.orderLines, remote: 'order_lines', conflictAware: false },
   { name: 'orderLineModifiers', local: db.orderLineModifiers, remote: 'order_line_modifiers', conflictAware: false },
   { name: 'payments', local: db.payments, remote: 'payments', conflictAware: false },

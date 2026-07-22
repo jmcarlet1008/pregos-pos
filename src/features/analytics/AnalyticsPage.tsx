@@ -4,6 +4,7 @@ import { db } from '../../db'
 import {
   addDays,
   buildOrdersCsv,
+  computeBirBreakdown,
   computeHourlyBuckets,
   computeKpiData,
   computePaymentSplit,
@@ -18,6 +19,7 @@ import {
   vatPortion,
   type ChartMode,
 } from './analyticsData'
+import { BirBreakdownPanel } from './BirBreakdownPanel'
 import { DateRangeFilter, type DatePreset } from './DateRangeFilter'
 import { HourlySalesChart } from './HourlySalesChart'
 import { KpiCards } from './KpiCards'
@@ -29,6 +31,7 @@ export function AnalyticsPage() {
 
   const orders = useLiveQuery(() => db.orders.where('status').equals('completed').toArray()) ?? []
   const orderLines = useLiveQuery(() => db.orderLines.toArray()) ?? []
+  const orderDiscounts = useLiveQuery(() => db.orderDiscounts.toArray()) ?? []
   const payments = useLiveQuery(() => db.payments.toArray()) ?? []
   const users = useLiveQuery(() => db.users.toArray()) ?? []
 
@@ -60,9 +63,10 @@ export function AnalyticsPage() {
   const filteredStats = computeStats(filteredOrders)
   const topItems = computeTopItems(filteredOrderIds, orderLines)
   const paymentSplit = computePaymentSplit(filteredOrders, payments)
+  const birBreakdown = computeBirBreakdown(filteredOrders, orderLines, orderDiscounts)
 
   function handleExport() {
-    const csv = buildOrdersCsv(filteredOrders, payments, users)
+    const csv = buildOrdersCsv(filteredOrders, payments, users, orderLines, orderDiscounts)
     downloadCsv(`pregos-sales_${toDateInputValue(rangeStart)}_to_${toDateInputValue(rangeEnd)}.csv`, csv)
   }
 
@@ -95,6 +99,8 @@ export function AnalyticsPage() {
         <TopItemsList items={topItems} />
         <PaymentSplitPanel split={paymentSplit} vat={vatPortion(filteredStats.grossSales)} />
       </div>
+
+      <BirBreakdownPanel data={birBreakdown} />
     </div>
   )
 }

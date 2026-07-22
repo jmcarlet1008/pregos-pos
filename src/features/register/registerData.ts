@@ -1,4 +1,5 @@
 import { db, type ModifierOption, type Order, type OrderLine, type Product } from '../../db'
+import { seniorPwdDiscountedPrice } from '../../lib/discount'
 
 function id() {
   return crypto.randomUUID()
@@ -56,9 +57,14 @@ export async function deleteOrderIfEmpty(orderId: string): Promise<void> {
   await db.orders.delete(orderId)
 }
 
-async function recalcOrderTotal(orderId: string): Promise<void> {
+/** What this line actually charges: full price, or the flat 20% Senior/PWD discount if tagged. */
+export function lineChargeAmount(line: OrderLine): number {
+  return line.order_discount_id ? seniorPwdDiscountedPrice(line.line_total) : line.line_total
+}
+
+export async function recalcOrderTotal(orderId: string): Promise<void> {
   const lines = await db.orderLines.where('order_id').equals(orderId).toArray()
-  const total = lines.reduce((sum, line) => sum + line.line_total, 0)
+  const total = lines.reduce((sum, line) => sum + lineChargeAmount(line), 0)
   const order = await db.orders.get(orderId)
   if (!order) return
   await db.orders.put(touch({ ...order, total }))
@@ -86,6 +92,7 @@ export async function addOrderLine(
       quantity,
       unit_price,
       line_total: total,
+      order_discount_id: null,
       sync_status: 'pending',
       ...timestamps(),
     }
@@ -159,13 +166,21 @@ export async function updateOrderLine(
   })
 }
 
-/** Deletes a line and its modifiers, then recomputes the order total. */
+/**
+ * Deletes a line and its modifiers, then recomputes the order total. If the line was the
+ * last one claimed under a Senior/PWD discount, that now-empty OrderDiscount is deleted too,
+ * so a holder with zero covered items never lingers on the receipt or in Analytics.
+ */
 export async function deleteOrderLine(lineId: string): Promise<void> {
-  await db.transaction('rw', [db.orderLines, db.orderLineModifiers, db.orders], async () => {
+  await db.transaction('rw', [db.orderLines, db.orderLineModifiers, db.orders, db.orderDiscounts], async () => {
     const line = await db.orderLines.get(lineId)
     if (!line) return
     await db.orderLineModifiers.where('order_line_id').equals(lineId).delete()
     await db.orderLines.delete(lineId)
+    if (line.order_discount_id) {
+      const remaining = await db.orderLines.where('order_discount_id').equals(line.order_discount_id).count()
+      if (remaining === 0) await db.orderDiscounts.delete(line.order_discount_id)
+    }
     await recalcOrderTotal(line.order_id)
   })
 }

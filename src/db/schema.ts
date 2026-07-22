@@ -67,6 +67,23 @@ export interface OrderLine extends BaseEntity {
   quantity: number
   unit_price: number // product price snapshot
   line_total: number // (unit_price + sum modifier adjustments) * quantity
+  order_discount_id: string | null // set when this line is claimed under a Senior/PWD discount (see OrderDiscount)
+}
+
+export type DiscountType = 'senior' | 'pwd'
+
+/**
+ * A single Senior Citizen (RA 9994) or PWD (RA 10754) discount claim on an order.
+ * One order can have multiple claims (e.g. two seniors at one table), each covering
+ * only the OrderLines that reference its id via OrderLine.order_discount_id — the
+ * statutory discount applies only to that person's own exclusive consumption, never
+ * the whole order.
+ */
+export interface OrderDiscount extends BaseEntity {
+  order_id: string
+  discount_type: DiscountType
+  holder_name: string
+  id_number: string
 }
 
 export interface OrderLineModifier extends BaseEntity {
@@ -156,6 +173,7 @@ class PregosDB extends Dexie {
   orders!: EntityTable<Order, 'id'>
   orderLines!: EntityTable<OrderLine, 'id'>
   orderLineModifiers!: EntityTable<OrderLineModifier, 'id'>
+  orderDiscounts!: EntityTable<OrderDiscount, 'id'>
   payments!: EntityTable<Payment, 'id'>
   users!: EntityTable<User, 'id'>
   shifts!: EntityTable<Shift, 'id'>
@@ -223,6 +241,28 @@ class PregosDB extends Dexie {
       orders: 'id, order_number, status, shift_id, sync_status',
       orderLines: 'id, order_id, product_id, sync_status',
       orderLineModifiers: 'id, order_line_id, modifier_option_id, sync_status',
+      payments: 'id, order_id, method, status, sync_status',
+      users: 'id, pin, role, active, sync_status',
+      shifts: 'id, user_id, status, sync_status',
+      stockAdjustments: 'id, product_id, order_id, reason, sync_status',
+      businessSettings: 'id, sync_status',
+      syncMeta: 'id',
+      imageCache: 'url, cached_at',
+    })
+
+    // v5 adds Senior Citizen / PWD discount support: a new orderDiscounts table, and an
+    // order_discount_id index on orderLines so a discount's covered lines can be queried.
+    // Purely additive — existing rows simply have no order_discount_id, which reads as
+    // "not discounted" everywhere it's checked.
+    this.version(5).stores({
+      categories: 'id, sort_order, active, sync_status',
+      products: 'id, category_id, active, sort_order, sync_status',
+      modifierGroups: 'id, product_id, sort_order, sync_status',
+      modifierOptions: 'id, modifier_group_id, sort_order, sync_status',
+      orders: 'id, order_number, status, shift_id, sync_status',
+      orderLines: 'id, order_id, product_id, order_discount_id, sync_status',
+      orderLineModifiers: 'id, order_line_id, modifier_option_id, sync_status',
+      orderDiscounts: 'id, order_id, sync_status',
       payments: 'id, order_id, method, status, sync_status',
       users: 'id, pin, role, active, sync_status',
       shifts: 'id, user_id, status, sync_status',

@@ -3,9 +3,13 @@ import { useState } from 'react'
 import { BUSINESS_SETTINGS_ID, db } from '../../db'
 import { Button, Modal } from '../../components/ui'
 import { formatCurrency } from '../../lib/currency'
+import { seniorPwdDiscountAmount, seniorPwdDiscountedPrice } from '../../lib/discount'
 import { useAuth } from '../auth/AuthContext'
 import { loadLines } from './CartPanel'
 import { voidOrder } from './checkoutData'
+import { lineChargeAmount } from './registerData'
+
+const DISCOUNT_LABEL = { senior: 'Senior Citizen', pwd: 'PWD' } as const
 
 export interface ReceiptScreenProps {
   orderId: string
@@ -22,6 +26,7 @@ export function ReceiptScreen({ orderId, onDone, doneLabel = 'New Order', printL
   const order = useLiveQuery(() => db.orders.get(orderId), [orderId])
   const payment = useLiveQuery(() => db.payments.where('order_id').equals(orderId).last(), [orderId])
   const lines = useLiveQuery(() => loadLines(orderId), [orderId]) ?? []
+  const orderDiscounts = useLiveQuery(() => db.orderDiscounts.where('order_id').equals(orderId).sortBy('created_at'), [orderId]) ?? []
   const business = useLiveQuery(() => db.businessSettings.get(BUSINESS_SETTINGS_ID))
 
   async function handleVoid() {
@@ -68,7 +73,14 @@ export function ReceiptScreen({ orderId, onDone, doneLabel = 'New Order', printL
                   <span>
                     {line.quantity}× {line.product_name}
                   </span>
-                  <span>{formatCurrency(line.line_total)}</span>
+                  {line.order_discount_id ? (
+                    <span className="flex flex-col items-end">
+                      <span className="text-label-sm line-through">{formatCurrency(line.line_total)}</span>
+                      <span>{formatCurrency(lineChargeAmount(line))}</span>
+                    </span>
+                  ) : (
+                    <span>{formatCurrency(line.line_total)}</span>
+                  )}
                 </div>
                 {line.modifiers.map((mod) => (
                   <div key={mod.id} className="flex justify-between pl-md text-label-sm text-on-surface-variant">
@@ -80,6 +92,39 @@ export function ReceiptScreen({ orderId, onDone, doneLabel = 'New Order', printL
             ))}
           </ul>
         </div>
+
+        {orderDiscounts.length > 0 && (
+          <div className="border-t border-dashed border-surface-dim pt-sm">
+            <p className="mb-xs text-label-bold text-on-surface">Senior Citizen / PWD Discount</p>
+            <ul className="flex flex-col gap-xs">
+              {orderDiscounts.map((discount) => {
+                const coveredLines = lines.filter((line) => line.order_discount_id === discount.id)
+                const coveredTotal = coveredLines.reduce((sum, line) => sum + line.line_total, 0)
+                return (
+                  <li key={discount.id} className="text-body-md text-on-surface">
+                    <div className="flex justify-between">
+                      <span>
+                        {discount.holder_name} ({DISCOUNT_LABEL[discount.discount_type]})
+                      </span>
+                    </div>
+                    <p className="text-label-sm text-on-surface-variant">ID: {discount.id_number}</p>
+                    <p className="text-label-sm text-on-surface-variant">
+                      Items: {coveredLines.map((line) => `${line.quantity}× ${line.product_name}`).join(', ')}
+                    </p>
+                    <div className="flex justify-between text-label-sm text-on-surface-variant">
+                      <span>VAT-Exempt Amount</span>
+                      <span>{formatCurrency(seniorPwdDiscountedPrice(coveredTotal))}</span>
+                    </div>
+                    <div className="flex justify-between text-label-sm text-on-surface-variant">
+                      <span>20% Discount</span>
+                      <span>{formatCurrency(seniorPwdDiscountAmount(coveredTotal))}</span>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
 
         <div className="border-t border-dashed border-surface-dim pt-sm">
           <div className="flex justify-between text-headline-md text-on-surface">

@@ -1,4 +1,5 @@
-import type { Order, OrderLine, Payment, PaymentMethod, User } from '../../db'
+import type { DiscountType, Order, OrderDiscount, OrderLine, Payment, PaymentMethod, User } from '../../db'
+import { netOfVat, seniorPwdDiscountAmount, seniorPwdDiscountedPrice } from '../../lib/discount'
 
 export function startOfDay(d: Date): Date {
   const r = new Date(d)
@@ -145,16 +146,114 @@ export function vatPortion(total: number): number {
   return (total * 12) / 112
 }
 
+export interface DiscountTypeBirFigures {
+  vatExemptSales: number
+  discountGranted: number
+}
+
+export interface BirBreakdown {
+  vatableSales: number
+  outputVatDue: number
+  vatExemptSales: number
+  discountGranted: number
+  senior: DiscountTypeBirFigures
+  pwd: DiscountTypeBirFigures
+}
+
+/**
+ * Buckets line totals into VATable (untagged) vs Senior/PWD-tagged gross, then applies the
+ * BIR-oriented formulas: VATable Sales stays net-of-assumed-VAT (matching vatPortion()'s
+ * existing convention), while the Senior/PWD side is computed straight off the full price —
+ * this business applies a flat 20% discount with no VAT-removal step (see lib/discount.ts).
+ */
+export function computeLinesBirFigures(
+  lines: OrderLine[],
+  discountTypeById: Map<string, DiscountType>,
+): BirBreakdown {
+  let vatableGross = 0
+  let seniorGross = 0
+  let pwdGross = 0
+
+  for (const line of lines) {
+    if (line.order_discount_id) {
+      const type = discountTypeById.get(line.order_discount_id)
+      if (type === 'senior') seniorGross += line.line_total
+      else if (type === 'pwd') pwdGross += line.line_total
+    } else {
+      vatableGross += line.line_total
+    }
+  }
+
+  const vatableSales = netOfVat(vatableGross)
+  const senior: DiscountTypeBirFigures = {
+    vatExemptSales: seniorPwdDiscountedPrice(seniorGross),
+    discountGranted: seniorPwdDiscountAmount(seniorGross),
+  }
+  const pwd: DiscountTypeBirFigures = {
+    vatExemptSales: seniorPwdDiscountedPrice(pwdGross),
+    discountGranted: seniorPwdDiscountAmount(pwdGross),
+  }
+
+  return {
+    vatableSales,
+    outputVatDue: vatableSales * 0.12,
+    vatExemptSales: senior.vatExemptSales + pwd.vatExemptSales,
+    discountGranted: senior.discountGranted + pwd.discountGranted,
+    senior,
+    pwd,
+  }
+}
+
+/** Same breakdown as computeLinesBirFigures, scoped to the given orders' own lines. */
+export function computeBirBreakdown(
+  orders: Order[],
+  orderLines: OrderLine[],
+  orderDiscounts: OrderDiscount[],
+): BirBreakdown {
+  const orderIds = new Set(orders.map((o) => o.id))
+  const discountTypeById = new Map(orderDiscounts.map((d) => [d.id, d.discount_type]))
+  const relevantLines = orderLines.filter((line) => orderIds.has(line.order_id))
+  return computeLinesBirFigures(relevantLines, discountTypeById)
+}
+
 function csvCell(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
 }
 
 const PAYMENT_LABEL: Record<PaymentMethod, string> = { cash: 'Cash', gcash: 'GCash' }
 
-export function buildOrdersCsv(orders: Order[], payments: Payment[], users: User[]): string {
+export function buildOrdersCsv(
+  orders: Order[],
+  payments: Payment[],
+  users: User[],
+  orderLines: OrderLine[],
+  orderDiscounts: OrderDiscount[],
+): string {
   const paymentByOrder = new Map(payments.map((p) => [p.order_id, p]))
   const userById = new Map(users.map((u) => [u.id, u]))
-  const header = ['Order #', 'Date', 'Time', 'Cashier', 'Payment Method', 'Total', 'VAT Portion (ref. only)']
+  const discountTypeById = new Map(orderDiscounts.map((d) => [d.id, d.discount_type]))
+  const linesByOrder = new Map<string, OrderLine[]>()
+  for (const line of orderLines) {
+    const existing = linesByOrder.get(line.order_id)
+    if (existing) existing.push(line)
+    else linesByOrder.set(line.order_id, [line])
+  }
+
+  const header = [
+    'Order #',
+    'Date',
+    'Time',
+    'Cashier',
+    'Payment Method',
+    'Total',
+    'VAT Portion (ref. only)',
+    'VATable Sales (net)',
+    'VAT-Exempt Sales (net)',
+    'Output VAT Due',
+    'SC/PWD Discount Granted',
+    'Senior Discount Granted',
+    'PWD Discount Granted',
+  ]
 
   const rows = orders
     .slice()
@@ -163,6 +262,7 @@ export function buildOrdersCsv(orders: Order[], payments: Payment[], users: User
       const ts = new Date(orderTimestamp(o))
       const payment = paymentByOrder.get(o.id)
       const cashier = o.user_id ? userById.get(o.user_id) : undefined
+      const bir = computeLinesBirFigures(linesByOrder.get(o.id) ?? [], discountTypeById)
       return [
         String(o.order_number),
         ts.toLocaleDateString('en-PH'),
@@ -171,6 +271,12 @@ export function buildOrdersCsv(orders: Order[], payments: Payment[], users: User
         payment ? PAYMENT_LABEL[payment.method] : '—',
         o.total.toFixed(2),
         vatPortion(o.total).toFixed(2),
+        bir.vatableSales.toFixed(2),
+        bir.vatExemptSales.toFixed(2),
+        bir.outputVatDue.toFixed(2),
+        bir.discountGranted.toFixed(2),
+        bir.senior.discountGranted.toFixed(2),
+        bir.pwd.discountGranted.toFixed(2),
       ]
     })
 
