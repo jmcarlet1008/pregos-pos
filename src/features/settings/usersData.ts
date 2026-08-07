@@ -1,16 +1,7 @@
-import { db, type User, type UserRole } from '../../db'
+import { db, timestamps, touch, type User, type UserRole } from '../../db'
 
 function id() {
   return crypto.randomUUID()
-}
-
-function timestamps() {
-  const now = new Date().toISOString()
-  return { created_at: now, updated_at: now }
-}
-
-function touch<T extends { updated_at: string }>(entity: T): T {
-  return { ...entity, updated_at: new Date().toISOString() }
 }
 
 function isValidPin(pin: string): boolean {

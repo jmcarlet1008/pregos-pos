@@ -1,13 +1,8 @@
-import { db, type DiscountType, type OrderDiscount } from '../../db'
+import { db, timestamps, touchPatch, type DiscountType, type OrderDiscount } from '../../db'
 import { recalcOrderTotal } from './registerData'
 
 function id() {
   return crypto.randomUUID()
-}
-
-function timestamps() {
-  const now = new Date().toISOString()
-  return { created_at: now, updated_at: now }
 }
 
 /**
@@ -33,9 +28,8 @@ export async function addOrderDiscount(
       ...timestamps(),
     }
     await db.orderDiscounts.add(discount)
-    const now = new Date().toISOString()
     for (const lineId of lineIds) {
-      await db.orderLines.update(lineId, { order_discount_id: discount.id, updated_at: now })
+      await db.orderLines.update(lineId, touchPatch({ order_discount_id: discount.id }))
     }
     await recalcOrderTotal(orderId)
   })
@@ -45,9 +39,8 @@ export async function addOrderDiscount(
 export async function removeOrderDiscount(discountId: string, orderId: string): Promise<void> {
   await db.transaction('rw', [db.orderDiscounts, db.orderLines, db.orders], async () => {
     const lines = await db.orderLines.where('order_discount_id').equals(discountId).toArray()
-    const now = new Date().toISOString()
     for (const line of lines) {
-      await db.orderLines.update(line.id, { order_discount_id: null, updated_at: now })
+      await db.orderLines.update(line.id, touchPatch({ order_discount_id: null }))
     }
     await db.orderDiscounts.delete(discountId)
     await recalcOrderTotal(orderId)

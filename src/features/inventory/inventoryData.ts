@@ -1,12 +1,7 @@
-import { db, type StockAdjustmentReason } from '../../db'
+import { db, timestamps, touchPatch, type StockAdjustmentReason } from '../../db'
 
 function id() {
   return crypto.randomUUID()
-}
-
-function timestamps() {
-  const now = new Date().toISOString()
-  return { created_at: now, updated_at: now }
 }
 
 export const REASON_LABELS: Record<StockAdjustmentReason, string> = {
@@ -35,10 +30,7 @@ export async function adjustStock(
   await db.transaction('rw', [db.products, db.stockAdjustments], async () => {
     const product = await db.products.get(productId)
     if (!product) return
-    await db.products.update(product.id, {
-      stock_on_hand: product.stock_on_hand + input.delta,
-      updated_at: new Date().toISOString(),
-    })
+    await db.products.update(product.id, touchPatch({ stock_on_hand: product.stock_on_hand + input.delta }))
     await db.stockAdjustments.add({
       id: id(),
       product_id: productId,

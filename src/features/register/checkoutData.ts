@@ -1,13 +1,8 @@
-import { db, type Payment } from '../../db'
+import { db, timestamps, touch, touchPatch, type Payment } from '../../db'
 import type { CompletedPaymentInput } from '../payments/PaymentProvider'
 
 function id() {
   return crypto.randomUUID()
-}
-
-function timestamps() {
-  const now = new Date().toISOString()
-  return { created_at: now, updated_at: now }
 }
 
 /**
@@ -55,10 +50,7 @@ export async function completeOrder(
         }
 
         const delta = -(line.quantity + addonQty)
-        await db.products.update(product.id, {
-          stock_on_hand: product.stock_on_hand + delta,
-          updated_at: new Date().toISOString(),
-        })
+        await db.products.update(product.id, touchPatch({ stock_on_hand: product.stock_on_hand + delta }))
         await db.stockAdjustments.add({
           id: id(),
           product_id: product.id,
@@ -73,7 +65,7 @@ export async function completeOrder(
       }
 
       const completed_at = new Date().toISOString()
-      await db.orders.put({ ...order, status: 'completed', user_id: userId, completed_at, updated_at: completed_at })
+      await db.orders.put(touch({ ...order, status: 'completed', user_id: userId, completed_at }))
 
       return payment.id
     },
@@ -97,10 +89,7 @@ export async function voidOrder(orderId: string, userId: string | null): Promise
       const product = await db.products.get(adjustment.product_id)
       if (!product) continue
       const restore = -adjustment.delta
-      await db.products.update(product.id, {
-        stock_on_hand: product.stock_on_hand + restore,
-        updated_at: new Date().toISOString(),
-      })
+      await db.products.update(product.id, touchPatch({ stock_on_hand: product.stock_on_hand + restore }))
       await db.stockAdjustments.add({
         id: id(),
         product_id: product.id,
@@ -114,6 +103,6 @@ export async function voidOrder(orderId: string, userId: string | null): Promise
       })
     }
 
-    await db.orders.put({ ...order, status: 'voided', updated_at: new Date().toISOString() })
+    await db.orders.put(touch({ ...order, status: 'voided' }))
   })
 }

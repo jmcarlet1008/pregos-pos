@@ -1,4 +1,4 @@
-import { BUSINESS_SETTINGS_ID, db, type BusinessSettings, type Category, type ModifierGroup, type ModifierOption, type Product, type User } from './schema'
+import { BUSINESS_SETTINGS_ID, db, SYNC_META_ID, type BusinessSettings, type Category, type ModifierGroup, type ModifierOption, type Product, type User } from './schema'
 
 /**
  * Fixed ids for every seeded row. Seeding must be idempotent across devices: if two
@@ -77,8 +77,20 @@ async function seedBusinessSettings() {
   })
 }
 
-/** Seeds a small sample menu on first run. No-op if categories already exist. */
+/**
+ * Seeds a small sample menu on first run. No-op if categories already exist —
+ * and no-op unconditionally on any device that has completed at least one sync
+ * cycle before, even if its local tables are currently empty (e.g. a manager
+ * deleted every category, or local storage was cleared/reset). A device that has
+ * synced before is not a fresh install; reseeding it would silently reintroduce
+ * demo data and risk overwriting real production rows on the next push (see
+ * sync/tables.ts). Only a device that has never synced and finds empty local
+ * tables should ever see the demo data.
+ */
 export async function seedDatabase() {
+  const meta = await db.syncMeta.get(SYNC_META_ID)
+  if (meta?.last_synced_at) return
+
   await seedUsers()
   await seedBusinessSettings()
 

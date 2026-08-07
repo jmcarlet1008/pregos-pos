@@ -1,17 +1,8 @@
-import { db, type ModifierOption, type Order, type OrderLine, type Product } from '../../db'
+import { db, timestamps, touch, type ModifierOption, type Order, type OrderLine, type Product } from '../../db'
 import { seniorPwdDiscountedPrice } from '../../lib/discount'
 
 function id() {
   return crypto.randomUUID()
-}
-
-function timestamps() {
-  const now = new Date().toISOString()
-  return { created_at: now, updated_at: now }
-}
-
-function touch<T extends { updated_at: string }>(entity: T): T {
-  return { ...entity, updated_at: new Date().toISOString() }
 }
 
 export function lineTotal(unitPrice: number, adjustments: number[], quantity: number): number {

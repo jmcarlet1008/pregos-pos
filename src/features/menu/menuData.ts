@@ -1,5 +1,7 @@
 import {
   db,
+  timestamps,
+  touch,
   type Category,
   type ModifierGroup,
   type ModifierOption,
@@ -8,15 +10,6 @@ import {
 
 function id() {
   return crypto.randomUUID()
-}
-
-function timestamps() {
-  const now = new Date().toISOString()
-  return { created_at: now, updated_at: now }
-}
-
-function touch<T extends { updated_at: string }>(entity: T): T {
-  return { ...entity, updated_at: new Date().toISOString() }
 }
 
 async function nextSortOrder<T extends { sort_order: number }>(
