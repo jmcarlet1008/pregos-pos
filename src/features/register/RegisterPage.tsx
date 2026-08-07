@@ -15,7 +15,17 @@ import { OrderHistoryPage } from './OrderHistoryPage'
 import { PaymentScreen } from '../payments/PaymentScreen'
 import type { CompletedPaymentInput } from '../payments/PaymentProvider'
 import { OUT_OF_STOCK_MODE } from './config'
-import { addOrderLine, createOrder, deleteOrderIfEmpty, deleteOrderLine, incrementSimpleLine, stockStatus, updateOrderLine } from './registerData'
+import {
+  addOrderLine,
+  cancelOrder,
+  cancelOrderIfEmpty,
+  cleanupAbandonedEmptyOrders,
+  createOrder,
+  deleteOrderLine,
+  incrementSimpleLine,
+  stockStatus,
+  updateOrderLine,
+} from './registerData'
 import { completeOrder } from './checkoutData'
 import { addOrderDiscount } from './discountData'
 import { SeniorPwdDiscountModal } from './SeniorPwdDiscountModal'
@@ -47,26 +57,33 @@ export function RegisterPage() {
 
     async function init() {
       const stored = sessionStorage.getItem(STORAGE_KEY)
+      let orderId: string | null = null
       if (stored) {
         const existing = await db.orders.get(stored)
-        if (existing && existing.status === 'active') {
-          setCurrentOrderId(stored)
-          return
-        }
+        if (existing && existing.status === 'active') orderId = stored
       }
-      const newId = await createOrder()
-      sessionStorage.setItem(STORAGE_KEY, newId)
-      setCurrentOrderId(newId)
+      if (!orderId) {
+        orderId = await createOrder()
+        sessionStorage.setItem(STORAGE_KEY, orderId)
+      }
+      setCurrentOrderId(orderId)
+      // Clean up empty carts abandoned by earlier sessions (closed tab, PWA relaunch,
+      // etc.) so they stop piling up in the Held Orders list — see registerData.ts.
+      void cleanupAbandonedEmptyOrders(orderId)
     }
 
     void init()
   }, [])
 
   const categories = useLiveQuery(() => db.categories.toArray()) ?? []
-  const activeCategories = categories.filter((c) => c.active).sort((a, b) => a.sort_order - b.sort_order)
+  const activeCategories = categories
+    .filter((c) => c.active && !c.deleted_at)
+    .sort((a, b) => a.sort_order - b.sort_order)
 
   const products = useLiveQuery(() => db.products.toArray()) ?? []
-  const activeProducts = products.filter((p) => p.active).sort((a, b) => a.sort_order - b.sort_order)
+  const activeProducts = products
+    .filter((p) => p.active && !p.deleted_at)
+    .sort((a, b) => a.sort_order - b.sort_order)
   const visibleProducts = selectedCategoryId
     ? activeProducts.filter((p) => p.category_id === selectedCategoryId)
     : activeProducts
@@ -109,7 +126,7 @@ export function RegisterPage() {
     setCurrentOrderId(newOrderId)
     sessionStorage.setItem(STORAGE_KEY, newOrderId)
     if (previousId && previousId !== newOrderId) {
-      await deleteOrderIfEmpty(previousId)
+      await cancelOrderIfEmpty(previousId)
     }
   }
 
@@ -123,10 +140,14 @@ export function RegisterPage() {
     await switchCurrentOrder(orderId)
   }
 
+  async function handleCancelHeld(orderId: string) {
+    await cancelOrder(orderId)
+  }
+
   async function openAddFlow(product: Product) {
     if (!currentOrderId) return
-    const groupCount = await db.modifierGroups.where('product_id').equals(product.id).count()
-    if (groupCount > 0) {
+    const groups = await db.modifierGroups.where('product_id').equals(product.id).toArray()
+    if (groups.some((g) => !g.deleted_at)) {
       setAddModalProduct(product)
       return
     }
@@ -309,6 +330,7 @@ export function RegisterPage() {
         open={heldModalOpen}
         heldOrders={heldOrders}
         onResume={handleResume}
+        onCancel={handleCancelHeld}
         onClose={() => setHeldModalOpen(false)}
       />
 

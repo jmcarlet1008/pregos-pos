@@ -16,10 +16,14 @@ export function MenuEditorPage() {
   const [editingSession, setEditingSession] = useState<EditingSession | null>(null)
 
   const categories = useLiveQuery(() => db.categories.toArray()) ?? []
-  const sortedCategories = [...categories].sort((a, b) => a.sort_order - b.sort_order)
+  const sortedCategories = categories
+    .filter((c) => !c.deleted_at)
+    .sort((a, b) => a.sort_order - b.sort_order)
 
   const products = useLiveQuery(() => db.products.toArray()) ?? []
-  const sortedProducts = [...products].sort((a, b) => a.sort_order - b.sort_order)
+  const sortedProducts = products
+    .filter((p) => !p.deleted_at)
+    .sort((a, b) => a.sort_order - b.sort_order)
   const visibleProducts = selectedCategoryId
     ? sortedProducts.filter((p) => p.category_id === selectedCategoryId)
     : sortedProducts

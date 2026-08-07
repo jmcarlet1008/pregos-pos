@@ -102,9 +102,12 @@ export async function seedDatabase() {
       if (existing > 0) return
 
       const categories: Category[] = [
-        { id: SEED_IDS.categoryPizza, name: 'Pizza', sort_order: 0, active: true, sync_status: 'pending', ...timestamps() },
-        { id: SEED_IDS.categoryPasta, name: 'Pasta', sort_order: 1, active: true, sync_status: 'pending', ...timestamps() },
-        { id: SEED_IDS.categoryDrinks, name: 'Drinks', sort_order: 2, active: true, sync_status: 'pending', ...timestamps() },
+        { id: SEED_IDS.categoryPizza, name: 'Pizza', sort_order: 0, active: true, sync_status: 'pending',
+          deleted_at: null, ...timestamps() },
+        { id: SEED_IDS.categoryPasta, name: 'Pasta', sort_order: 1, active: true, sync_status: 'pending',
+          deleted_at: null, ...timestamps() },
+        { id: SEED_IDS.categoryDrinks, name: 'Drinks', sort_order: 2, active: true, sync_status: 'pending',
+          deleted_at: null, ...timestamps() },
       ]
       await db.categories.bulkAdd(categories)
 
@@ -124,6 +127,7 @@ export async function seedDatabase() {
           reorder_point: 10,
           unit: 'pcs',
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
         {
@@ -141,6 +145,7 @@ export async function seedDatabase() {
           reorder_point: 10,
           unit: 'pcs',
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
         {
@@ -158,6 +163,7 @@ export async function seedDatabase() {
           reorder_point: 8,
           unit: 'pcs',
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
         {
@@ -175,6 +181,7 @@ export async function seedDatabase() {
           reorder_point: 8,
           unit: 'pcs',
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
         {
@@ -192,6 +199,7 @@ export async function seedDatabase() {
           reorder_point: 15,
           unit: 'pcs',
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
         {
@@ -209,6 +217,7 @@ export async function seedDatabase() {
           reorder_point: 0,
           unit: 'pcs',
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
       ]
@@ -224,6 +233,7 @@ export async function seedDatabase() {
           max_picks: 3,
           sort_order: 0,
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
         {
@@ -235,6 +245,7 @@ export async function seedDatabase() {
           max_picks: 1,
           sort_order: 0,
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
       ]
@@ -250,6 +261,7 @@ export async function seedDatabase() {
           deduct_qty: 1,
           sort_order: 0,
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
         {
@@ -261,6 +273,7 @@ export async function seedDatabase() {
           deduct_qty: 0,
           sort_order: 1,
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
         {
@@ -272,6 +285,7 @@ export async function seedDatabase() {
           deduct_qty: 0,
           sort_order: 2,
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
         {
@@ -283,6 +297,7 @@ export async function seedDatabase() {
           deduct_qty: 0,
           sort_order: 0,
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
         {
@@ -294,6 +309,7 @@ export async function seedDatabase() {
           deduct_qty: 0,
           sort_order: 1,
           sync_status: 'pending',
+          deleted_at: null,
           ...timestamps(),
         },
       ]

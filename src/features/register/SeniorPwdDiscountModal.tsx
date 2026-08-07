@@ -32,8 +32,14 @@ function suggestDefaultSelection(
 }
 
 export function SeniorPwdDiscountModal({ open, availableLines, onClose, onConfirm }: SeniorPwdDiscountModalProps) {
-  const products = useLiveQuery(() => (open ? db.products.toArray() : Promise.resolve<Product[]>([])), [open]) ?? []
-  const categories = useLiveQuery(() => (open ? db.categories.toArray() : Promise.resolve<Category[]>([])), [open]) ?? []
+  const products =
+    useLiveQuery(() => (open ? db.products.toArray() : Promise.resolve<Product[]>([])), [open])?.filter(
+      (p) => !p.deleted_at,
+    ) ?? []
+  const categories =
+    useLiveQuery(() => (open ? db.categories.toArray() : Promise.resolve<Category[]>([])), [open])?.filter(
+      (c) => !c.deleted_at,
+    ) ?? []
 
   const [discountType, setDiscountType] = useState<DiscountType>('senior')
   const [holderName, setHolderName] = useState('')

@@ -41,11 +41,37 @@ export async function createOrder(): Promise<string> {
   return order.id
 }
 
-/** Deletes an order (and its lines/modifiers) if it has no lines yet — used to clean up abandoned empty orders. */
-export async function deleteOrderIfEmpty(orderId: string): Promise<void> {
+/**
+ * Cancels an active (never-completed) order by marking it voided. No stock was ever
+ * deducted for an active order, so there's nothing to restore — this just needs the
+ * order to stop showing as "active"/held. A status change (not a hard delete) so it
+ * syncs like any other edit; a hard local delete would never propagate to Supabase
+ * (there's no delete-sync for orders) and the order would just come back on the next
+ * pull to a fresh device — see main.tsx/seed.ts's comments on the same problem for
+ * categories/products.
+ */
+export async function cancelOrder(orderId: string): Promise<void> {
+  const order = await db.orders.get(orderId)
+  if (!order || order.status !== 'active') return
+  await db.orders.put(touch({ ...order, status: 'voided' }))
+}
+
+/** Cancels an order only if it has no lines yet — used to clean up abandoned empty carts. */
+export async function cancelOrderIfEmpty(orderId: string): Promise<void> {
   const lineCount = await db.orderLines.where('order_id').equals(orderId).count()
   if (lineCount > 0) return
-  await db.orders.delete(orderId)
+  await cancelOrder(orderId)
+}
+
+/**
+ * Cancels every other empty active order still lying around — abandoned carts left by
+ * a previous session that closed or reloaded without ever explicitly holding or
+ * switching away from them (so cancelOrderIfEmpty never got a chance to run). Call
+ * once per app boot so these don't keep piling up in the Held Orders list.
+ */
+export async function cleanupAbandonedEmptyOrders(keepOrderId: string): Promise<void> {
+  const active = await db.orders.where('status').equals('active').toArray()
+  await Promise.all(active.filter((o) => o.id !== keepOrderId).map((o) => cancelOrderIfEmpty(o.id)))
 }
 
 /** What this line actually charges: full price, or the flat 20% Senior/PWD discount if tagged. */

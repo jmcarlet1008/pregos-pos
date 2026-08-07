@@ -28,11 +28,15 @@ interface GroupWithOptions extends ModifierGroup {
 }
 
 async function loadGroups(productId: string): Promise<GroupWithOptions[]> {
-  const groups = await db.modifierGroups.where('product_id').equals(productId).sortBy('sort_order')
+  const groups = (await db.modifierGroups.where('product_id').equals(productId).sortBy('sort_order')).filter(
+    (g) => !g.deleted_at,
+  )
   return Promise.all(
     groups.map(async (group) => ({
       ...group,
-      options: await db.modifierOptions.where('modifier_group_id').equals(group.id).sortBy('sort_order'),
+      options: (
+        await db.modifierOptions.where('modifier_group_id').equals(group.id).sortBy('sort_order')
+      ).filter((o) => !o.deleted_at),
     })),
   )
 }

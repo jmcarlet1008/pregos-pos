@@ -12,10 +12,14 @@ function id() {
   return crypto.randomUUID()
 }
 
-async function nextSortOrder<T extends { sort_order: number }>(
+function notDeleted<T extends { deleted_at: string | null }>(rows: T[]): T[] {
+  return rows.filter((r) => !r.deleted_at)
+}
+
+async function nextSortOrder<T extends { sort_order: number; deleted_at: string | null }>(
   all: () => Promise<T[]>,
 ): Promise<number> {
-  const rows = await all()
+  const rows = notDeleted(await all())
   return rows.reduce((max, r) => Math.max(max, r.sort_order), -1) + 1
 }
 
@@ -32,6 +36,7 @@ export async function createCategory(input: CategoryInput): Promise<string> {
     name: input.name.trim(),
     sort_order,
     active: true,
+    deleted_at: null,
     sync_status: 'pending',
     ...timestamps(),
   }
@@ -63,13 +68,18 @@ export async function reorderCategories(orderedIds: string[]): Promise<void> {
   })
 }
 
-/** Throws if the category still has products assigned to it. */
+/**
+ * Soft-deletes a category (throws if it still has non-deleted products assigned).
+ * See SoftDeletable in db/schema.ts for why this isn't a plain Dexie `.delete()`.
+ */
 export async function deleteCategory(categoryId: string): Promise<void> {
-  const productCount = await db.products.where('category_id').equals(categoryId).count()
-  if (productCount > 0) {
+  const products = notDeleted(await db.products.where('category_id').equals(categoryId).toArray())
+  if (products.length > 0) {
     throw new Error('Move or delete this category’s products before deleting it.')
   }
-  await db.categories.delete(categoryId)
+  const category = await db.categories.get(categoryId)
+  if (!category) return
+  await db.categories.put(touch({ ...category, deleted_at: new Date().toISOString() }))
 }
 
 // ---------- Products ----------
@@ -94,6 +104,7 @@ export async function createProduct(input: ProductInput): Promise<string> {
     id: id(),
     ...input,
     sort_order,
+    deleted_at: null,
     sync_status: 'pending',
     ...timestamps(),
   }
@@ -131,15 +142,21 @@ export async function reorderProducts(visibleSortedAsc: Product[], orderedIds: s
   })
 }
 
-/** Deletes a product along with its modifier groups/options. */
+/** Soft-deletes a product along with its (non-deleted) modifier groups/options. */
 export async function deleteProduct(productId: string): Promise<void> {
   await db.transaction('rw', [db.products, db.modifierGroups, db.modifierOptions], async () => {
-    const groups = await db.modifierGroups.where('product_id').equals(productId).toArray()
+    const deleted_at = new Date().toISOString()
+    const groups = notDeleted(await db.modifierGroups.where('product_id').equals(productId).toArray())
     for (const group of groups) {
-      await db.modifierOptions.where('modifier_group_id').equals(group.id).delete()
+      const options = notDeleted(await db.modifierOptions.where('modifier_group_id').equals(group.id).toArray())
+      for (const option of options) {
+        await db.modifierOptions.put(touch({ ...option, deleted_at }))
+      }
+      await db.modifierGroups.put(touch({ ...group, deleted_at }))
     }
-    await db.modifierGroups.where('product_id').equals(productId).delete()
-    await db.products.delete(productId)
+    const product = await db.products.get(productId)
+    if (!product) return
+    await db.products.put(touch({ ...product, deleted_at }))
   })
 }
 
@@ -159,6 +176,7 @@ export async function createModifierGroup(productId: string, input: ModifierGrou
     product_id: productId,
     ...input,
     sort_order,
+    deleted_at: null,
     sync_status: 'pending',
     ...timestamps(),
   }
@@ -172,10 +190,17 @@ export async function updateModifierGroup(groupId: string, input: ModifierGroupI
   await db.modifierGroups.put(touch({ ...group, ...input }))
 }
 
+/** Soft-deletes a modifier group along with its (non-deleted) options. */
 export async function deleteModifierGroup(groupId: string): Promise<void> {
   await db.transaction('rw', [db.modifierGroups, db.modifierOptions], async () => {
-    await db.modifierOptions.where('modifier_group_id').equals(groupId).delete()
-    await db.modifierGroups.delete(groupId)
+    const deleted_at = new Date().toISOString()
+    const options = notDeleted(await db.modifierOptions.where('modifier_group_id').equals(groupId).toArray())
+    for (const option of options) {
+      await db.modifierOptions.put(touch({ ...option, deleted_at }))
+    }
+    const group = await db.modifierGroups.get(groupId)
+    if (!group) return
+    await db.modifierGroups.put(touch({ ...group, deleted_at }))
   })
 }
 
@@ -209,6 +234,7 @@ export async function createModifierOption(groupId: string, input: ModifierOptio
     modifier_group_id: groupId,
     ...input,
     sort_order,
+    deleted_at: null,
     sync_status: 'pending',
     ...timestamps(),
   }
@@ -223,7 +249,9 @@ export async function updateModifierOption(optionId: string, input: ModifierOpti
 }
 
 export async function deleteModifierOption(optionId: string): Promise<void> {
-  await db.modifierOptions.delete(optionId)
+  const option = await db.modifierOptions.get(optionId)
+  if (!option) return
+  await db.modifierOptions.put(touch({ ...option, deleted_at: new Date().toISOString() }))
 }
 
 export async function reorderModifierOptions(orderedIds: string[]): Promise<void> {

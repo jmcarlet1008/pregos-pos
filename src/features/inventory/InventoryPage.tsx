@@ -10,7 +10,9 @@ export function InventoryPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const products = useLiveQuery(() => db.products.toArray()) ?? []
-  const tracked = products.filter((p) => p.track_inventory).sort((a, b) => a.name.localeCompare(b.name))
+  const tracked = products
+    .filter((p) => p.track_inventory && !p.deleted_at)
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   const selectedProduct = tracked.find((p) => p.id === selectedId) ?? null
 

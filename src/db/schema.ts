@@ -9,13 +9,28 @@ export interface BaseEntity {
   sync_status: SyncStatus
 }
 
-export interface Category extends BaseEntity {
+/**
+ * Soft-delete marker used on catalog entities (Category/Product/ModifierGroup/
+ * ModifierOption). These are the only entities the app lets a user hard-remove from
+ * Menu Editor, and a plain Dexie `.delete()` only ever removes the row *locally* —
+ * there's no delete propagation in the sync engine (pull.ts/push.ts only know how to
+ * upsert). A hard-deleted row would keep living in Supabase forever and come right
+ * back the next time any device did a full pull. Marking `deleted_at` instead turns a
+ * delete into an ordinary field update, which the existing upsert-based sync already
+ * handles correctly — no changes needed to pull/push. Read call sites are responsible
+ * for filtering out rows where this is set; see e.g. MenuEditorPage/RegisterPage.
+ */
+export interface SoftDeletable {
+  deleted_at: string | null
+}
+
+export interface Category extends BaseEntity, SoftDeletable {
   name: string
   sort_order: number
   active: boolean
 }
 
-export interface Product extends BaseEntity {
+export interface Product extends BaseEntity, SoftDeletable {
   name: string
   category_id: string
   price: number // VAT-inclusive, ₱
@@ -31,7 +46,7 @@ export interface Product extends BaseEntity {
   unit: string // e.g. 'pcs', 'lbs'
 }
 
-export interface ModifierGroup extends BaseEntity {
+export interface ModifierGroup extends BaseEntity, SoftDeletable {
   product_id: string
   name: string
   required: boolean
@@ -40,7 +55,7 @@ export interface ModifierGroup extends BaseEntity {
   sort_order: number
 }
 
-export interface ModifierOption extends BaseEntity {
+export interface ModifierOption extends BaseEntity, SoftDeletable {
   modifier_group_id: string
   name: string
   price_adjustment: number // VAT-inclusive, ₱
