@@ -86,7 +86,12 @@ function ProductRow({
         <div className="text-label-sm text-on-surface-variant">{categoryName}</div>
       </button>
 
-      <span className="shrink-0 text-body-md font-bold text-primary">{formatCurrency(product.price)}</span>
+      <div className="flex shrink-0 flex-col items-end">
+        <span className="text-body-md font-bold text-primary">{formatCurrency(product.price)}</span>
+        <span className="text-label-sm text-on-surface-variant">
+          Cost: {product.cost_price != null ? formatCurrency(product.cost_price) : 'N/A'}
+        </span>
+      </div>
 
       <Switch
         checked={product.active}

@@ -52,13 +52,25 @@ function OptionRow({
 }) {
   const [name, setName] = useState(option.name)
   const [priceAdjustment, setPriceAdjustment] = useState(String(option.price_adjustment))
+  const [costAdjustment, setCostAdjustment] = useState(
+    option.cost_adjustment == null ? '' : String(option.cost_adjustment),
+  )
   const [deductQty, setDeductQty] = useState(String(option.deduct_qty))
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
-  function commit(patch: Partial<{ name: string; price_adjustment: number; deducts_stock: boolean; deduct_qty: number }>) {
+  function commit(
+    patch: Partial<{
+      name: string
+      price_adjustment: number
+      cost_adjustment: number | null
+      deducts_stock: boolean
+      deduct_qty: number
+    }>,
+  ) {
     void updateModifierOption(option.id, {
       name: patch.name ?? option.name,
       price_adjustment: patch.price_adjustment ?? option.price_adjustment,
+      cost_adjustment: 'cost_adjustment' in patch ? patch.cost_adjustment ?? null : option.cost_adjustment,
       deducts_stock: patch.deducts_stock ?? option.deducts_stock,
       deduct_qty: patch.deduct_qty ?? option.deduct_qty,
     })
@@ -92,6 +104,24 @@ function OptionRow({
           value={priceAdjustment}
           onChange={(e) => setPriceAdjustment(e.target.value)}
           onBlur={() => commit({ price_adjustment: Number(priceAdjustment) || 0 })}
+          className="w-20 rounded border border-outline bg-surface-container-lowest px-xs py-[6px] text-body-md text-on-surface"
+        />
+      </div>
+
+      <div className="flex items-center gap-[2px]">
+        <span className="text-label-sm text-on-surface-variant" title="Actual cost of this option">
+          cost ₱
+        </span>
+        <input
+          type="number"
+          step="0.01"
+          value={costAdjustment}
+          onChange={(e) => setCostAdjustment(e.target.value)}
+          onBlur={() => {
+            const trimmed = costAdjustment.trim()
+            commit({ cost_adjustment: trimmed === '' ? null : Number(trimmed) || 0 })
+          }}
+          placeholder="N/A"
           className="w-20 rounded border border-outline bg-surface-container-lowest px-xs py-[6px] text-body-md text-on-surface"
         />
       </div>
@@ -159,6 +189,10 @@ function OptionRow({
 function AddOptionForm({ groupId }: { groupId: string }) {
   const [name, setName] = useState('')
   const [priceAdjustment, setPriceAdjustment] = useState('0')
+  // Cost defaults blank (unknown), unlike price which defaults to 0 — a modifier option
+  // always has a selling-price impact (even ₱0 for "no charge"), but its cost is
+  // genuinely unset until a manager fills it in.
+  const [costAdjustment, setCostAdjustment] = useState('')
   const [saving, setSaving] = useState(false)
 
   async function handleAdd() {
@@ -166,14 +200,17 @@ function AddOptionForm({ groupId }: { groupId: string }) {
     if (!trimmed) return
     setSaving(true)
     try {
+      const costTrimmed = costAdjustment.trim()
       await createModifierOption(groupId, {
         name: trimmed,
         price_adjustment: Number(priceAdjustment) || 0,
+        cost_adjustment: costTrimmed === '' ? null : Number(costTrimmed) || 0,
         deducts_stock: false,
         deduct_qty: 1,
       })
       setName('')
       setPriceAdjustment('0')
+      setCostAdjustment('')
     } finally {
       setSaving(false)
     }
@@ -201,6 +238,15 @@ function AddOptionForm({ groupId }: { groupId: string }) {
         onChange={(e) => setPriceAdjustment(e.target.value)}
         aria-label="Price adjustment"
         className="w-24"
+      />
+      <Input
+        type="number"
+        step="0.01"
+        value={costAdjustment}
+        onChange={(e) => setCostAdjustment(e.target.value)}
+        aria-label="Cost adjustment"
+        placeholder="Cost (optional)"
+        className="w-32"
       />
       <Button type="submit" variant="secondary" disabled={saving || !name.trim()}>
         + Option

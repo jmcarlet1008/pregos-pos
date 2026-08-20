@@ -107,6 +107,10 @@ export async function addOrderLine(
     }
 
     const unit_price = product.price
+    // Snapshot cost the same way price is snapshotted: once, at add-to-cart time, never
+    // re-read from the product afterward (see incrementSimpleLine/updateOrderLine, which
+    // both carry this forward via spread rather than re-fetching the product).
+    const unit_cost = product.cost_price ?? null
     const total = lineTotal(
       unit_price,
       selections.map((s) => s.price_adjustment),
@@ -119,6 +123,7 @@ export async function addOrderLine(
       product_name: product.name,
       quantity,
       unit_price,
+      unit_cost,
       line_total: total,
       order_discount_id: null,
       sync_status: 'pending',
@@ -133,6 +138,7 @@ export async function addOrderLine(
           modifier_option_id: option.id,
           name: option.name,
           price_adjustment: option.price_adjustment,
+          unit_cost_adjustment: option.cost_adjustment ?? null,
           sync_status: 'pending' as const,
           ...timestamps(),
         })),
@@ -179,6 +185,7 @@ export async function updateOrderLine(
           modifier_option_id: option.id,
           name: option.name,
           price_adjustment: option.price_adjustment,
+          unit_cost_adjustment: option.cost_adjustment ?? null,
           sync_status: 'pending' as const,
           ...timestamps(),
         })),

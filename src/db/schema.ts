@@ -34,6 +34,7 @@ export interface Product extends BaseEntity, SoftDeletable {
   name: string
   category_id: string
   price: number // VAT-inclusive, ₱
+  cost_price: number | null // actual cost per unit, ₱; null = not yet entered — never treat as 0
   description: string
   image_url: string | null
   active: boolean
@@ -59,6 +60,9 @@ export interface ModifierOption extends BaseEntity, SoftDeletable {
   modifier_group_id: string
   name: string
   price_adjustment: number // VAT-inclusive, ₱
+  cost_adjustment: number | null // actual cost impact of this option, ₱; null = not yet
+  // entered — never treat as 0. Can be negative, same as price_adjustment (e.g. a
+  // downgrade that costs less).
   deducts_stock: boolean
   deduct_qty: number
   sort_order: number
@@ -85,6 +89,7 @@ export interface OrderLine extends BaseEntity {
   product_name: string // snapshot at time of sale
   quantity: number
   unit_price: number // product price snapshot
+  unit_cost: number | null // product cost_price snapshot at time of sale; null if cost was unknown then
   line_total: number // (unit_price + sum modifier adjustments) * quantity
   order_discount_id: string | null // set when this line is claimed under a Senior/PWD discount (see OrderDiscount)
 }
@@ -110,6 +115,8 @@ export interface OrderLineModifier extends BaseEntity {
   modifier_option_id: string
   name: string // snapshot
   price_adjustment: number // snapshot
+  unit_cost_adjustment: number | null // ModifierOption.cost_adjustment snapshot at time
+  // of sale; null if unknown then
 }
 
 export type PaymentMethod = 'cash' | 'gcash'
@@ -273,6 +280,16 @@ class PregosDB extends Dexie {
     // order_discount_id index on orderLines so a discount's covered lines can be queried.
     // Purely additive — existing rows simply have no order_discount_id, which reads as
     // "not discounted" everywhere it's checked.
+    //
+    // NOTE: Product.cost_price, OrderLine.unit_cost, ModifierOption.cost_adjustment, and
+    // OrderLineModifier.unit_cost_adjustment (cost-tracking / profit reporting) were added
+    // later without a new .version() bump. .stores() strings only declare *indexed*
+    // columns — none of these fields is ever queried by index, so Dexie reads/writes them
+    // fine as plain fields at this version. A version bump here would be a no-op stores()
+    // diff, which would break this file's own convention (every bump above pairs with an
+    // actual index change) more than it would help. Existing rows simply have these
+    // fields === undefined until touched, which the app treats as unknown (same as an
+    // explicit null) everywhere cost is read.
     this.version(5).stores({
       categories: 'id, sort_order, active, sync_status',
       products: 'id, category_id, active, sort_order, sync_status',

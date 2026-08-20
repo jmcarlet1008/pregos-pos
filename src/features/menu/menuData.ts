@@ -88,6 +88,7 @@ export interface ProductInput {
   name: string
   category_id: string
   price: number
+  cost_price: number | null
   description: string
   image_url: string | null
   active: boolean
@@ -221,6 +222,7 @@ export async function reorderModifierGroups(orderedIds: string[]): Promise<void>
 export interface ModifierOptionInput {
   name: string
   price_adjustment: number
+  cost_adjustment: number | null
   deducts_stock: boolean
   deduct_qty: number
 }

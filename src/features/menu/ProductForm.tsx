@@ -16,6 +16,7 @@ interface FormState {
   name: string
   category_id: string
   price: string
+  cost_price: string
   description: string
   image_url: string | null
   active: boolean
@@ -32,6 +33,7 @@ function initialState(product: Product | null, defaultCategoryId: string | null)
       name: product.name,
       category_id: product.category_id,
       price: String(product.price),
+      cost_price: product.cost_price == null ? '' : String(product.cost_price),
       description: product.description,
       image_url: product.image_url,
       active: product.active,
@@ -46,6 +48,7 @@ function initialState(product: Product | null, defaultCategoryId: string | null)
     name: '',
     category_id: defaultCategoryId ?? '',
     price: '',
+    cost_price: '',
     description: '',
     image_url: null,
     active: true,
@@ -102,11 +105,23 @@ export function ProductForm({ product, categories, defaultCategoryId, onClose, o
       setError('Enter a valid price.')
       return
     }
+    // Cost is optional — a blank field means "not yet entered," never a fabricated ₱0.
+    const costTrimmed = form.cost_price.trim()
+    let cost_price: number | null = null
+    if (costTrimmed !== '') {
+      const parsedCost = Number(costTrimmed)
+      if (!Number.isFinite(parsedCost) || parsedCost < 0) {
+        setError('Enter a valid cost, or leave it blank if unknown.')
+        return
+      }
+      cost_price = parsedCost
+    }
 
     const input: ProductInput = {
       name,
       category_id: form.category_id,
       price,
+      cost_price,
       description: form.description.trim(),
       image_url: form.image_url,
       active: form.active,
@@ -201,6 +216,16 @@ export function ProductForm({ product, categories, defaultCategoryId, onClose, o
             value={form.price}
             onChange={(e) => update('price', e.target.value)}
             placeholder="0.00"
+          />
+
+          <Input
+            label="Cost (₱, actual cost to make/buy — optional)"
+            type="number"
+            step="0.01"
+            min={0}
+            value={form.cost_price}
+            onChange={(e) => update('cost_price', e.target.value)}
+            placeholder="Leave blank if unknown"
           />
 
           <div className="flex flex-col gap-xs">

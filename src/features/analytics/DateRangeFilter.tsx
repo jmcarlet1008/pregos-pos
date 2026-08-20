@@ -18,6 +18,8 @@ interface DateRangeFilterProps {
   onEndChange: (date: Date) => void
   onExport: () => void
   exportDisabled: boolean
+  onExportDetailed?: () => void
+  exportDetailedDisabled?: boolean
 }
 
 export function DateRangeFilter({
@@ -29,6 +31,8 @@ export function DateRangeFilter({
   onEndChange,
   onExport,
   exportDisabled,
+  onExportDetailed,
+  exportDetailedDisabled,
 }: DateRangeFilterProps) {
   return (
     <div className="flex flex-wrap items-end gap-sm">
@@ -70,6 +74,11 @@ export function DateRangeFilter({
       <Button variant="secondary" onClick={onExport} disabled={exportDisabled} className="ml-auto">
         Export CSV
       </Button>
+      {onExportDetailed && (
+        <Button variant="secondary" onClick={onExportDetailed} disabled={exportDetailedDisabled}>
+          Detailed Export
+        </Button>
+      )}
     </div>
   )
 }
