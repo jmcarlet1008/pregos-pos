@@ -19,16 +19,18 @@ export function stockStatus(product: Product): StockStatus {
 }
 
 async function getNextOrderNumber(): Promise<number> {
+  // order_number is null on every not-yet-numbered order, which IndexedDB simply
+  // excludes from this index — so this walk only ever sees real, previously-assigned
+  // numbers, exactly what we want the next number to build on.
   const last = await db.orders.orderBy('order_number').last()
   return (last?.order_number ?? 0) + 1
 }
 
-/** Creates a new active order and returns its id. */
+/** Creates a new active order (not yet numbered — see addOrderLine) and returns its id. */
 export async function createOrder(): Promise<string> {
-  const order_number = await getNextOrderNumber()
   const order: Order = {
     id: id(),
-    order_number,
+    order_number: null,
     status: 'active',
     total: 0,
     shift_id: null,
@@ -95,6 +97,15 @@ export async function addOrderLine(
   quantity: number,
 ): Promise<void> {
   await db.transaction('rw', [db.orderLines, db.orderLineModifiers, db.orders], async () => {
+    // Lazily assign the real order number on this order's first line — see
+    // createOrder/getNextOrderNumber. An order that never gets an item (reload, test,
+    // abandoned cart) never consumes a number.
+    const order = await db.orders.get(orderId)
+    if (order && order.order_number == null) {
+      const order_number = await getNextOrderNumber()
+      await db.orders.put(touch({ ...order, order_number }))
+    }
+
     const unit_price = product.price
     const total = lineTotal(
       unit_price,

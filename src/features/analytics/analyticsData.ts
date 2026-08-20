@@ -264,7 +264,7 @@ export function buildOrdersCsv(
       const cashier = o.user_id ? userById.get(o.user_id) : undefined
       const bir = computeLinesBirFigures(linesByOrder.get(o.id) ?? [], discountTypeById)
       return [
-        String(o.order_number),
+        String(o.order_number ?? '—'),
         ts.toLocaleDateString('en-PH'),
         ts.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }),
         cashier?.name ?? '—',

@@ -67,7 +67,11 @@ export interface ModifierOption extends BaseEntity, SoftDeletable {
 export type OrderStatus = 'active' | 'completed' | 'voided'
 
 export interface Order extends BaseEntity {
-  order_number: number
+  // null until the order gets its first line — an empty cart (created on every app
+  // boot/reload, see RegisterPage.tsx's init()) never consumes a real order number.
+  // Assigned once, lazily, in registerData.ts's addOrderLine. See the 2026-08-20
+  // incident notes in supabase/migrations/20260815010000_order_number_lazy.sql.
+  order_number: number | null
   status: OrderStatus
   total: number // sum of line totals, VAT-inclusive, no separate VAT line
   shift_id: string | null

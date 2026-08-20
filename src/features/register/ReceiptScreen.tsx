@@ -60,7 +60,7 @@ export function ReceiptScreen({ orderId, onDone, doneLabel = 'New Order', printL
           <h1 className="text-headline-md text-on-surface">{business?.name || "Prego's Cucina"}</h1>
           {business?.address && <p className="text-label-sm text-on-surface-variant">{business.address}</p>}
           {business?.phone && <p className="text-label-sm text-on-surface-variant">{business.phone}</p>}
-          <p className="text-label-sm text-on-surface-variant">Order #{order.order_number}</p>
+          <p className="text-label-sm text-on-surface-variant">Order #{order.order_number ?? '—'}</p>
           <p className="text-label-sm text-on-surface-variant">{printedAt.toLocaleString()}</p>
           {voided && <p className="mt-xs text-label-bold uppercase text-error">Voided</p>}
         </div>
@@ -190,7 +190,7 @@ export function ReceiptScreen({ orderId, onDone, doneLabel = 'New Order', printL
         }
       >
         <p className="text-body-md text-on-surface">
-          This restores stock deducted by Order #{order.order_number} and marks it voided. This can't be undone.
+          This restores stock deducted by Order #{order.order_number ?? '—'} and marks it voided. This can't be undone.
         </p>
       </Modal>
     </div>

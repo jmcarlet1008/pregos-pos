@@ -31,7 +31,7 @@ function HeldOrderRow({
         className="flex min-h-touch flex-1 items-center justify-between rounded-md border border-surface-dim px-sm py-xs text-left hover:border-primary hover:bg-surface-container"
       >
         <span className="text-body-md font-bold text-on-surface">
-          Order #{order.order_number}
+          Order #{order.order_number ?? '—'}
           <span className="ml-xs font-normal text-on-surface-variant">
             ({lineCount} item{lineCount === 1 ? '' : 's'})
           </span>
@@ -41,7 +41,7 @@ function HeldOrderRow({
       <button
         type="button"
         onClick={() => onRequestCancel(order)}
-        aria-label={`Remove held order #${order.order_number}`}
+        aria-label={`Remove held order #${order.order_number ?? '—'}`}
         className="touch-target flex shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-error-container hover:text-on-error-container"
       >
         <TrashIcon width={20} height={20} />
@@ -92,7 +92,7 @@ export function HeldOrdersModal({ open, heldOrders, onResume, onCancel, onClose 
           }
         >
           <p className="text-body-md text-on-surface">
-            Order #{confirming.order_number} ({formatCurrency(confirming.total)}) will be removed from Held Orders.
+            Order #{confirming.order_number ?? '—'} ({formatCurrency(confirming.total)}) will be removed from Held Orders.
             It was never paid, so nothing else is affected — this can't be undone.
           </p>
         </Modal>

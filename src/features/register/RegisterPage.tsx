@@ -313,7 +313,9 @@ export function RegisterPage() {
 
       {screen === 'payment' && currentOrder && (
         <PaymentScreen
-          orderNumber={currentOrder.order_number}
+          // Payment is only reachable after Checkout, which requires at least one
+          // line — order_number is always assigned by then (see addOrderLine).
+          orderNumber={currentOrder.order_number!}
           amountDue={currentOrder.total}
           initialMethod={paymentMethod}
           submitting={submittingPayment}

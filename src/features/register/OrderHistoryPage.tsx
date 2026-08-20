@@ -85,7 +85,7 @@ export function OrderHistoryPage() {
   const searchTerm = search.trim()
   const filtered = orders
     .filter((o) => statusFilter === 'all' || o.status === statusFilter)
-    .filter((o) => !searchTerm || String(o.order_number).includes(searchTerm))
+    .filter((o) => !searchTerm || String(o.order_number ?? '').includes(searchTerm))
 
   if (viewingOrderId) {
     return (
@@ -159,7 +159,7 @@ export function OrderHistoryPage() {
                   onClick={() => setViewingOrderId(order.id)}
                   className="cursor-pointer border-t border-surface-dim hover:bg-surface-container"
                 >
-                  <td className="px-sm py-xs font-bold text-on-surface">#{order.order_number}</td>
+                  <td className="px-sm py-xs font-bold text-on-surface">#{order.order_number ?? '—'}</td>
                   <td className="px-sm py-xs text-on-surface-variant">
                     {new Date(orderTime(order)).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
                   </td>
