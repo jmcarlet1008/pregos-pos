@@ -2,6 +2,7 @@ import { Card } from '../../components/ui'
 import { BackupRestoreSection } from './BackupRestoreSection'
 import { BusinessInfoSection } from './BusinessInfoSection'
 import { CloudBackupRestoreSection } from './CloudBackupRestoreSection'
+import { ForceResyncSection } from './ForceResyncSection'
 import { UsersSection } from './UsersSection'
 import { InstallGuideSection } from './InstallGuideSection'
 
@@ -14,6 +15,7 @@ export function SettingsPage() {
       <UsersSection />
       <BackupRestoreSection />
       <CloudBackupRestoreSection />
+      <ForceResyncSection />
       <InstallGuideSection />
 
       <Card padding="md" className="flex flex-col gap-xs">
