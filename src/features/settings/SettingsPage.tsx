@@ -2,6 +2,7 @@ import { Card } from '../../components/ui'
 import { BackupRestoreSection } from './BackupRestoreSection'
 import { BusinessInfoSection } from './BusinessInfoSection'
 import { CloudBackupRestoreSection } from './CloudBackupRestoreSection'
+import { DeliveryPaymentSection } from './DeliveryPaymentSection'
 import { ForceResyncSection } from './ForceResyncSection'
 import { UsersSection } from './UsersSection'
 import { InstallGuideSection } from './InstallGuideSection'
@@ -12,6 +13,7 @@ export function SettingsPage() {
       <h1 className="text-headline-lg text-on-surface">Settings &amp; Support</h1>
 
       <BusinessInfoSection />
+      <DeliveryPaymentSection />
       <UsersSection />
       <BackupRestoreSection />
       <CloudBackupRestoreSection />

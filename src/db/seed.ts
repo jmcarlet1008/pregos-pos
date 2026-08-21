@@ -1,4 +1,20 @@
-import { BUSINESS_SETTINGS_ID, db, SYNC_META_ID, type BusinessSettings, type Category, type ModifierGroup, type ModifierOption, type Product, type User } from './schema'
+import {
+  BUSINESS_SETTINGS_ID,
+  DEFAULT_ACCEPTING_ORDERS_TODAY,
+  DEFAULT_AVERAGE_PREP_TIME_MINUTES,
+  DEFAULT_DELIVERY_END_TIME,
+  DEFAULT_DELIVERY_SLOT_INTERVAL_MINUTES,
+  DEFAULT_DELIVERY_START_TIME,
+  DEFAULT_DELIVERY_ZONES,
+  db,
+  SYNC_META_ID,
+  type BusinessSettings,
+  type Category,
+  type ModifierGroup,
+  type ModifierOption,
+  type Product,
+  type User,
+} from './schema'
 
 /**
  * Fixed ids for every seeded row. Seeding must be idempotent across devices: if two
@@ -70,6 +86,14 @@ async function seedBusinessSettings() {
       logo_url: null,
       address: '',
       phone: '',
+      gcash_number: '',
+      gcash_qr_image: null,
+      accepting_orders_today: DEFAULT_ACCEPTING_ORDERS_TODAY,
+      delivery_start_time: DEFAULT_DELIVERY_START_TIME,
+      delivery_end_time: DEFAULT_DELIVERY_END_TIME,
+      delivery_slot_interval_minutes: DEFAULT_DELIVERY_SLOT_INTERVAL_MINUTES,
+      average_prep_time_minutes: DEFAULT_AVERAGE_PREP_TIME_MINUTES,
+      delivery_zones: DEFAULT_DELIVERY_ZONES,
       sync_status: 'pending',
       ...timestamps(),
     }

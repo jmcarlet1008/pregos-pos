@@ -81,6 +81,10 @@ export interface Order extends BaseEntity {
   shift_id: string | null
   user_id: string | null // cashier who completed the sale
   completed_at: string | null // set once, at completion — unlike updated_at, not overwritten by a later void
+  // Per-order override for the Kitchen View's prep-start calculation (Prompt 12):
+  // null means "use BusinessSettings.average_prep_time_minutes"; set this when a
+  // specific order is bigger/more complex than average and needs more lead time.
+  prep_time_override_minutes: number | null
 }
 
 export interface OrderLine extends BaseEntity {
@@ -160,15 +164,75 @@ export interface StockAdjustment extends BaseEntity {
   note: string | null
 }
 
+/**
+ * A single delivery area a customer can choose during online ordering.
+ * `auto_route: true` — a free/standard zone: the order auto-routes straight to the
+ * kitchen queue with a structured address form.
+ * `auto_route: false` — an out-of-area zone: the order requires manual staff
+ * confirmation via Messenger before it's allowed to enter the queue.
+ * Manager-editable list (add/rename/remove) — see businessData.ts's
+ * addDeliveryZone/renameDeliveryZone/removeDeliveryZone/setDeliveryZoneAutoRoute.
+ */
+export interface DeliveryZone {
+  id: string
+  name: string
+  auto_route: boolean
+}
+
 export interface BusinessSettings extends BaseEntity {
   name: string
   logo_url: string | null
   address: string
   phone: string
+  // ---- Online ordering: Delivery & Payment (see DeliveryPaymentSection.tsx) ----
+  // These fields were added after the initial BusinessSettings table without a Dexie
+  // .version() bump — none of them is ever queried by index, following the same
+  // convention documented at the version(5) block below for the cost-tracking fields.
+  // A BusinessSettings row seeded before this change will read these as `undefined`
+  // on a device that hasn't touched Delivery & Payment yet; every read site must fall
+  // back to the matching DEFAULT_* constant below rather than assume they're set.
+  gcash_number: string
+  gcash_qr_image: string | null // data URL, stored the same way as logo_url — see BusinessInfoSection's logo uploader
+  // Instant manual Open/Closed switch for online ordering — independent of, and can
+  // override, the scheduled delivery_start_time/delivery_end_time window below (e.g.
+  // early closure, holiday, or running out of stock).
+  accepting_orders_today: boolean
+  // Bounds the automatic daily ordering window, settable per day by a Manager, e.g.
+  // "Today's delivery runs 3:00 PM to 9:00 PM." 24h "HH:MM" strings.
+  delivery_start_time: string
+  delivery_end_time: string
+  // How far apart the delivery time slots offered to customers are, in minutes.
+  delivery_slot_interval_minutes: number
+  // Used by the Kitchen View to calculate when an order needs to start being
+  // prepared, based on its requested delivery/pickup time. See Order.prep_time_override_minutes
+  // for the optional per-order override.
+  average_prep_time_minutes: number
+  delivery_zones: DeliveryZone[]
 }
 
 /** Fixed primary key — there is only ever one BusinessSettings record. */
 export const BUSINESS_SETTINGS_ID = 'singleton'
+
+export const DEFAULT_ACCEPTING_ORDERS_TODAY = true
+export const DEFAULT_DELIVERY_START_TIME = '10:00'
+export const DEFAULT_DELIVERY_END_TIME = '21:00'
+export const DEFAULT_DELIVERY_SLOT_INTERVAL_MINUTES = 30
+export const DEFAULT_AVERAGE_PREP_TIME_MINUTES = 15
+
+/**
+ * Fixed ids so a fresh local-first seed (seed.ts) and a fresh Supabase-first pull
+ * (the delivery_zones column default in the matching migration) converge on the same
+ * two starting zones — same rationale as seed.ts's SEED_IDS.
+ */
+export const DEFAULT_DELIVERY_ZONE_IDS = {
+  withinCamella: '00000000-0000-4000-8000-000000000050',
+  outsideCamella: '00000000-0000-4000-8000-000000000051',
+} as const
+
+export const DEFAULT_DELIVERY_ZONES: DeliveryZone[] = [
+  { id: DEFAULT_DELIVERY_ZONE_IDS.withinCamella, name: 'Within Camella', auto_route: true },
+  { id: DEFAULT_DELIVERY_ZONE_IDS.outsideCamella, name: 'Outside Camella', auto_route: false },
+]
 
 /** Tracks the sync engine's pull cursor. Single row, key = SYNC_META_ID. */
 export interface SyncMeta {

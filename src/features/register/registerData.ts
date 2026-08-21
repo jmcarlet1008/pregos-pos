@@ -36,6 +36,7 @@ export async function createOrder(): Promise<string> {
     shift_id: null,
     user_id: null,
     completed_at: null,
+    prep_time_override_minutes: null,
     sync_status: 'pending',
     ...timestamps(),
   }
