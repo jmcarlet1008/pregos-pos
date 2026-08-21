@@ -13,6 +13,12 @@ function parseTimeToday(hhmm: string, now: Date): Date {
   return result
 }
 
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date)
+  result.setDate(result.getDate() + days)
+  return result
+}
+
 /**
  * Whether /order should show the ordering flow right now: the manual
  * accepting_orders_today switch takes priority (an explicit staff override — early
@@ -20,29 +26,63 @@ function parseTimeToday(hhmm: string, now: Date): Date {
  * window. Re-run this against a fresh `now` periodically (see OrderPage's interval) so
  * a window boundary passing closes the page even without a BusinessSettings change to
  * react to via Realtime.
+ *
+ * delivery_end_time can be earlier in the day than delivery_start_time (e.g. 10:00 to
+ * 01:00) — an overnight window that closes after midnight, common for dinner service.
+ * That's handled as three cases relative to `now`'s time-of-day: still inside the tail
+ * of the window that opened yesterday, closed in the gap waiting for today's opening,
+ * or inside today's window (which then runs into tomorrow morning).
  */
 export function evaluateOpenState(settings: BusinessSettings, now: Date = new Date()): OpenState {
   if (!settings.accepting_orders_today) return { open: false, reason: 'manual' }
 
   const opensAt = settings.delivery_start_time
   const closesAt = settings.delivery_end_time
-  const opens = parseTimeToday(opensAt, now)
-  const closes = parseTimeToday(closesAt, now)
+  const overnight = closesAt <= opensAt
 
-  if (now < opens) return { open: false, reason: 'before_open', opensAt, closesAt }
-  if (now > closes) return { open: false, reason: 'after_close', closesAt }
-  return { open: true }
+  if (!overnight) {
+    const opens = parseTimeToday(opensAt, now)
+    const closes = parseTimeToday(closesAt, now)
+    if (now < opens) return { open: false, reason: 'before_open', opensAt, closesAt }
+    if (now > closes) return { open: false, reason: 'after_close', closesAt }
+    return { open: true }
+  }
+
+  const opensToday = parseTimeToday(opensAt, now)
+  const closesThisMorning = parseTimeToday(closesAt, now)
+
+  if (now <= closesThisMorning) return { open: true } // tail of yesterday's window
+  if (now < opensToday) return { open: false, reason: 'before_open', opensAt, closesAt } // gap before today's opening
+  return { open: true } // today's window, runs until tomorrow morning
 }
 
 /**
  * Today's "HH:MM" slots from delivery_start_time to delivery_end_time, stepping by
  * delivery_slot_interval_minutes, excluding any slot that's already in the past —
  * a customer shouldn't be offered a pickup/delivery time that's already gone by.
+ *
+ * For an overnight window (see evaluateOpenState), the slot range anchors to whichever
+ * calendar day's window is actually active right now — yesterday's opening through this
+ * morning's close, or today's opening through tomorrow morning's close — so slots keep
+ * making sense right across the midnight boundary.
  */
 export function generateTimeSlots(settings: BusinessSettings, now: Date = new Date()): string[] {
   const slots: string[] = []
-  const cursor = parseTimeToday(settings.delivery_start_time, now)
-  const end = parseTimeToday(settings.delivery_end_time, now)
+  const opensAt = settings.delivery_start_time
+  const closesAt = settings.delivery_end_time
+  const overnight = closesAt <= opensAt
+
+  const cursor = parseTimeToday(opensAt, now)
+  let end = parseTimeToday(closesAt, now)
+
+  if (overnight) {
+    if (now <= end) {
+      cursor.setTime(addDays(cursor, -1).getTime()) // still yesterday's window
+    } else {
+      end = addDays(end, 1) // today's window, closes tomorrow morning
+    }
+  }
+
   const stepMinutes = Math.max(5, settings.delivery_slot_interval_minutes)
 
   while (cursor <= end) {
@@ -56,9 +96,16 @@ export function generateTimeSlots(settings: BusinessSettings, now: Date = new Da
   return slots
 }
 
-/** Combines a chosen "HH:MM" slot with today's date into a full ISO datetime, for Order.requested_time. */
+/**
+ * Combines a chosen "HH:MM" slot with a calendar date into a full ISO datetime, for
+ * Order.requested_time. generateTimeSlots already excludes any slot earlier than `now`,
+ * so the only way today's version of this time-of-day lands before `now` is an
+ * overnight-window slot that's actually for tomorrow (e.g. it's 11pm and the customer
+ * picked 00:30) — bump those to the next calendar day.
+ */
 export function slotToIso(hhmm: string, now: Date = new Date()): string {
-  return parseTimeToday(hhmm, now).toISOString()
+  const candidate = parseTimeToday(hhmm, now)
+  return (candidate < now ? addDays(candidate, 1) : candidate).toISOString()
 }
 
 export function formatSlotLabel(hhmm: string): string {
