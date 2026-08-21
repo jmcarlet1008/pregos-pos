@@ -63,8 +63,10 @@ export async function saveBusinessSettings(input: BusinessSettingsInput): Promis
  * A pre-existing local row seeded before Delivery & Payment fields existed reads
  * these as `undefined` until touched (see schema.ts's BusinessSettings comment) —
  * this fills in the documented defaults so every read/write site sees real values.
+ * Exported for src/features/order/orderSupabaseData.ts, which applies the same
+ * defaulting to a row read live from Supabase rather than Dexie.
  */
-function withDeliveryDefaults(settings: BusinessSettings): BusinessSettings {
+export function withDeliveryDefaults(settings: BusinessSettings): BusinessSettings {
   return {
     ...settings,
     gcash_number: settings.gcash_number ?? '',

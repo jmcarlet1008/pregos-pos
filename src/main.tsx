@@ -34,9 +34,16 @@ async function boot() {
   startSyncEngine()
 }
 
-void boot().catch((err) => {
-  console.error('Failed to initialize database', err)
-})
+// /order is the one route opened by an unauthenticated customer on their own device,
+// not a staff iPad — it must never pull the full staff replica (every order, every
+// user incl. PINs, every shift, ...) into that visitor's IndexedDB, and has no use for
+// the offline-first sync engine. It talks to Supabase directly instead (see
+// src/features/order/orderSupabaseData.ts). Every other route keeps today's boot.
+if (!window.location.pathname.startsWith('/order')) {
+  void boot().catch((err) => {
+    console.error('Failed to initialize database', err)
+  })
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -70,11 +70,40 @@ export interface ModifierOption extends BaseEntity, SoftDeletable {
 
 export type OrderStatus = 'active' | 'completed' | 'voided'
 
+/** Where an order originated: the in-store Register, or the public /order page. */
+export type OrderChannel = 'in_store' | 'online'
+
+export type FulfillmentType = 'pickup' | 'delivery'
+
+/**
+ * A structured address for an `auto_route` delivery zone (see DeliveryZone), typed by
+ * a customer at checkout on /order. `type: 'freeform'` is used instead for a
+ * manual-confirmation zone, where staff work out the exact address/logistics with the
+ * customer over Messenger and a precise Block/Lot/Phase/Street isn't collected upfront.
+ */
+export interface StructuredDeliveryAddress {
+  type: 'structured'
+  block: string
+  lot: string
+  phase: string
+  street: string
+}
+
+export interface FreeformDeliveryAddress {
+  type: 'freeform'
+  area: string
+}
+
+export type DeliveryAddress = StructuredDeliveryAddress | FreeformDeliveryAddress
+
 export interface Order extends BaseEntity {
   // null until the order gets its first line — an empty cart (created on every app
   // boot/reload, see RegisterPage.tsx's init()) never consumes a real order number.
   // Assigned once, lazily, in registerData.ts's addOrderLine. See the 2026-08-20
   // incident notes in supabase/migrations/20260815010000_order_number_lazy.sql.
+  // An online order (see `channel`) also starts with order_number: null and stays
+  // that way through this app — a future staff-side view assigns it lazily too, for
+  // the same collision-avoidance reason (see 20260821010000_add_online_order_fields.sql).
   order_number: number | null
   status: OrderStatus
   total: number // sum of line totals, VAT-inclusive, no separate VAT line
@@ -85,6 +114,19 @@ export interface Order extends BaseEntity {
   // null means "use BusinessSettings.average_prep_time_minutes"; set this when a
   // specific order is bigger/more complex than average and needs more lead time.
   prep_time_override_minutes: number | null
+  // ---- Online ordering (see supabase/migrations/20260821010000_add_online_order_fields.sql) ----
+  channel: OrderChannel
+  fulfillment_type: FulfillmentType | null // null for in-store orders
+  delivery_zone: string | null // DeliveryZone.name snapshot at order time; null for pickup or in-store
+  delivery_address: DeliveryAddress | null
+  delivery_lat: number | null // optional Geolocation capture, supplementary to delivery_address
+  delivery_lng: number | null
+  requested_time: string | null // ISO datetime — chosen pickup/delivery time slot, today
+  payment_method: PaymentMethod | null
+  cash_tendered_amount: number | null // set when payment_method === 'cash'
+  gcash_customer_confirmed: boolean | null // set when payment_method === 'gcash'
+  customer_name: string | null
+  customer_contact: string | null
 }
 
 export interface OrderLine extends BaseEntity {
@@ -96,6 +138,7 @@ export interface OrderLine extends BaseEntity {
   unit_cost: number | null // product cost_price snapshot at time of sale; null if cost was unknown then
   line_total: number // (unit_price + sum modifier adjustments) * quantity
   order_discount_id: string | null // set when this line is claimed under a Senior/PWD discount (see OrderDiscount)
+  remarks: string | null // optional special instructions, independent per line (see /order's CustomerLineModal)
 }
 
 export type DiscountType = 'senior' | 'pwd'

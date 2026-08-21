@@ -37,6 +37,20 @@ export async function createOrder(): Promise<string> {
     user_id: null,
     completed_at: null,
     prep_time_override_minutes: null,
+    // Register always creates an in-store order with no online-ordering details — see
+    // src/features/order/orderSupabaseData.ts for how /order fills these in instead.
+    channel: 'in_store',
+    fulfillment_type: null,
+    delivery_zone: null,
+    delivery_address: null,
+    delivery_lat: null,
+    delivery_lng: null,
+    requested_time: null,
+    payment_method: null,
+    cash_tendered_amount: null,
+    gcash_customer_confirmed: null,
+    customer_name: null,
+    customer_contact: null,
     sync_status: 'pending',
     ...timestamps(),
   }
@@ -127,6 +141,7 @@ export async function addOrderLine(
       unit_cost,
       line_total: total,
       order_discount_id: null,
+      remarks: null, // Register has no remarks UI — only /order's CustomerLineModal sets this
       sync_status: 'pending',
       ...timestamps(),
     }
