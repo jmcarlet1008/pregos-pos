@@ -1,4 +1,5 @@
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom'
+import { UpdateBanner } from './components/ui'
 import { AppShell } from './layout/AppShell'
 import { RegisterPage } from './features/register/RegisterPage'
 import { InventoryPage } from './features/inventory/InventoryPage'
@@ -68,6 +69,7 @@ const router = createBrowserRouter([
 export function App() {
   return (
     <AuthProvider>
+      <UpdateBanner />
       <RouterProvider router={router} />
     </AuthProvider>
   )

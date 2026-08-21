@@ -9,7 +9,10 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' (not 'autoUpdate'): a new service worker installs but waits for
+      // explicit activation, so the in-app "update available" banner controls when
+      // the reload happens instead of silently swapping code under an open tablet.
+      registerType: 'prompt',
       includeAssets: ['favicon.svg'],
       manifest: {
         id: '/',
@@ -31,6 +34,19 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // /order, /kitchen, /fulfillment run on tablets that stay open all day and
+        // depend on realtime Supabase subscriptions to be useful at all, so they must
+        // always fetch the latest deployed code over the network rather than risk
+        // serving a stale offline snapshot. Never let navigations to these routes
+        // fall back to the cached app shell, online or offline.
+        navigateFallbackDenylist: [/^\/order(\/|$)/, /^\/kitchen(\/|$)/, /^\/fulfillment(\/|$)/],
+        // Belt-and-suspenders: once those pages exist, they'll be grouped into
+        // realtime-* chunks by the manualChunks rule below (build.rollupOptions.output)
+        // — this keeps those chunks out of the precache manifest entirely. Requires the
+        // page code to live under src/features/{order,kitchen,fulfillment}/ and be
+        // added to the router via React.lazy/dynamic import (not a static import like
+        // today's routes) so it actually forms its own chunk.
+        globIgnores: ['**/realtime-*.js'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -56,4 +72,19 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // Keep the future realtime routes (/order, /kitchen, /fulfillment) out of the
+        // main app bundle so they can be excluded from offline precaching (see the
+        // globIgnores/navigateFallbackDenylist comments above). Only takes effect once
+        // those pages exist under src/features/{order,kitchen,fulfillment}/ and are
+        // wired into the router via a lazy/dynamic import.
+        manualChunks(id) {
+          const match = id.match(/[\\/]src[\\/]features[\\/](order|kitchen|fulfillment)[\\/]/)
+          if (match) return `realtime-${match[1]}`
+        },
+      },
+    },
+  },
 })

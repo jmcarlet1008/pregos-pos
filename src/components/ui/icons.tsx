@@ -119,3 +119,14 @@ export function TrashIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   )
 }
+
+export function RefreshIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M20 11A8 8 0 0 0 6.34 6.34L4 8.67" stroke="currentColor" />
+      <path d="M4 4v4.67h4.67" stroke="currentColor" />
+      <path d="M4 13a8 8 0 0 0 13.66 4.66L20 15.33" stroke="currentColor" />
+      <path d="M20 20v-4.67h-4.67" stroke="currentColor" />
+    </Icon>
+  )
+}
