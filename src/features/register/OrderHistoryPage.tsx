@@ -100,7 +100,7 @@ export function OrderHistoryPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-sm">
-      <div className="grid grid-cols-2 gap-sm @sm:max-w-md">
+      <div className="grid grid-cols-2 gap-sm @sm:max-w-[28rem]">
         <SummaryCard label="Orders Today" value={String(completedToday.length)} />
         <SummaryCard label="Gross Sales Today" value={formatCurrency(grossSalesToday)} />
       </div>

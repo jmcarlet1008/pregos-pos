@@ -26,7 +26,7 @@ export function ClosedNotice({ state }: ClosedNoticeProps) {
     <div className="flex flex-1 flex-col items-center justify-center gap-sm py-xl text-center">
       <span className="text-6xl">🍝</span>
       <h2 className="text-headline-md text-on-surface">We're closed right now</h2>
-      <p className="max-w-sm text-body-md text-on-surface-variant">{message}</p>
+      <p className="max-w-[24rem] text-body-md text-on-surface-variant">{message}</p>
     </div>
   )
 }

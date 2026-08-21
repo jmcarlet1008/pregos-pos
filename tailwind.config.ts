@@ -87,6 +87,15 @@ export default {
         'margin-mobile': '16px',
         touch: '48px',
       },
+      // DO NOT add xs/sm/md/lg/xl keys here — spacing.xs/sm/md/lg/lg/xl above are custom
+      // design tokens (4px/12px/24px/48px/80px) that share those exact names. Tailwind
+      // v4's JS-config compat layer (@config in index.css) resolves max-w-{size} (and
+      // w-/h-/min-w-/etc.) against the spacing scale unconditionally when the names
+      // match — even an explicit same-named maxWidth entry here does not win (confirmed
+      // by testing: it still compiled to spacing's raw pixel value). Concretely this
+      // means max-w-sm/md/lg/xl/xs are silently broken app-wide (e.g. max-w-sm compiles
+      // to max-width: 12px, not 24rem) — never use those class names. Use an arbitrary
+      // value instead, e.g. max-w-[24rem], which bypasses named-theme lookup entirely.
       maxWidth: {
         container: '1200px',
       },
