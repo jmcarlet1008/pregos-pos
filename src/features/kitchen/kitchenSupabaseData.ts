@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KitchenStatus, Order, OrderLine, OrderLineModifier } from '../../db'
+import { nowIso } from '../../db'
 import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient'
 
 /**
@@ -224,22 +225,37 @@ export function useKitchenQueue(onNewOrder?: (order: Order) => void) {
   return { bundles, connectionStatus, patchQueuePriority }
 }
 
+// Every mutation below sets updated_at explicitly: the `orders` table has no
+// updated_at-on-UPDATE trigger, and these are raw Supabase REST writes (not the local
+// Dexie touch()/touchPatch() path, which bumps it automatically) — periodic sync's
+// incremental pull (src/sync/pull.ts, `gt('updated_at', sinceIso)`) would otherwise
+// never notice a kitchen_status/queue_priority-only change on any other device, and it
+// would sit invisible until that device's next full page-reload pull. See
+// src/features/fulfillment/fulfillmentSupabaseData.ts's matching mutations for the
+// same reasoning (root-caused together, 2026-08-22).
+
 export async function markReady(orderId: string): Promise<void> {
-  const { error } = await supabase.from('orders').update({ kitchen_status: 'ready' }).eq('id', orderId)
+  const { error } = await supabase.from('orders').update({ kitchen_status: 'ready', updated_at: nowIso() }).eq('id', orderId)
   if (error) throw new Error(`Failed to mark order ready: ${error.message}`)
 }
 
 export async function confirmAndSendToKitchen(orderId: string): Promise<void> {
-  const { error } = await supabase.from('orders').update({ kitchen_status: 'preparing' }).eq('id', orderId)
+  const { error } = await supabase
+    .from('orders')
+    .update({ kitchen_status: 'preparing', updated_at: nowIso() })
+    .eq('id', orderId)
   if (error) throw new Error(`Failed to send order to the kitchen: ${error.message}`)
 }
 
 export async function setQueuePriority(orderId: string, priority: number): Promise<void> {
-  const { error } = await supabase.from('orders').update({ queue_priority: priority }).eq('id', orderId)
+  const { error } = await supabase.from('orders').update({ queue_priority: priority, updated_at: nowIso() }).eq('id', orderId)
   if (error) throw new Error(`Failed to reorder: ${error.message}`)
 }
 
 export async function setPrepTimeOverride(orderId: string, minutes: number | null): Promise<void> {
-  const { error } = await supabase.from('orders').update({ prep_time_override_minutes: minutes }).eq('id', orderId)
+  const { error } = await supabase
+    .from('orders')
+    .update({ prep_time_override_minutes: minutes, updated_at: nowIso() })
+    .eq('id', orderId)
   if (error) throw new Error(`Failed to update prep time: ${error.message}`)
 }

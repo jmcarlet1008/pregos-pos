@@ -34,14 +34,15 @@ async function boot() {
   startSyncEngine()
 }
 
-// /order and /kitchen (and /fulfillment, when it's built) are opened on a device that
-// never needs the full staff Dexie replica (every order, every user incl. PINs, every
-// shift, ...) — a customer's own phone for /order, or a shared kitchen/hand-off station
+// /order, /kitchen, and /fulfillment are opened on a device that never needs the full
+// staff Dexie replica (every order, every user incl. PINs, every shift, ...) — a
+// customer's own phone for /order, or a shared kitchen/front-counter/dispatch station
 // for the other two — and have no use for the offline-first sync engine. They talk to
-// Supabase directly instead (see src/features/order/orderSupabaseData.ts and
-// src/features/kitchen/kitchenSupabaseData.ts). Every other route keeps today's boot.
+// Supabase directly instead (see src/features/order/orderSupabaseData.ts,
+// src/features/kitchen/kitchenSupabaseData.ts, and
+// src/features/fulfillment/fulfillmentSupabaseData.ts). Every other route keeps today's boot.
 const path = window.location.pathname
-if (!path.startsWith('/order') && !path.startsWith('/kitchen')) {
+if (!path.startsWith('/order') && !path.startsWith('/kitchen') && !path.startsWith('/fulfillment')) {
   void boot().catch((err) => {
     console.error('Failed to initialize database', err)
   })

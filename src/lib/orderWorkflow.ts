@@ -104,10 +104,17 @@ export function computeSortEpoch(order: OrderForSort, settings: SettingsForPrep 
   return startBy ? startBy.getTime() : new Date(order.created_at).getTime()
 }
 
+/** `phase` is a free-text Input (DeliveryZoneStep.tsx), not a number field — a customer
+ *  filling in a field literally labeled "Phase" very plausibly types "Phase 2" rather
+ *  than just "2", so this avoids rendering "Phase Phase 2" for those orders. */
+export function formatPhase(phase: string): string {
+  return /^phase\b/i.test(phase.trim()) ? phase.trim() : `Phase ${phase}`
+}
+
 /** Renders either delivery-address shape (see schema.ts's DeliveryAddress) to one display line. */
 export function formatDeliveryAddress(address: DeliveryAddress): string {
   if (address.type === 'structured') {
-    const parts = [address.block && `Blk ${address.block}`, address.lot && `Lot ${address.lot}`, address.phase && `Phase ${address.phase}`]
+    const parts = [address.block && `Blk ${address.block}`, address.lot && `Lot ${address.lot}`, address.phase && formatPhase(address.phase)]
       .filter(Boolean)
       .join(', ')
     return [parts, address.street].filter(Boolean).join(', ')

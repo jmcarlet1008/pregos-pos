@@ -18,6 +18,10 @@ import { ROUTES } from './routes'
 const OrderPage = lazy(() => import('./features/order/OrderPage').then((m) => ({ default: m.OrderPage })))
 // Same rationale as OrderPage above — its own `realtime-kitchen` chunk.
 const KitchenPage = lazy(() => import('./features/kitchen/KitchenPage').then((m) => ({ default: m.KitchenPage })))
+// Same rationale as OrderPage above — its own `realtime-fulfillment` chunk.
+const FulfillmentPage = lazy(() =>
+  import('./features/fulfillment/FulfillmentPage').then((m) => ({ default: m.FulfillmentPage })),
+)
 
 const router = createBrowserRouter([
   { path: ROUTES.login, element: <LoginPage /> },
@@ -40,6 +44,17 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={null}>
         <KitchenPage />
+      </Suspense>
+    ),
+  },
+  // Public, shared-station screen — same rationale as /kitchen immediately above: no
+  // Manager PIN gating (shared front-counter/dispatch station device), top-level
+  // sibling so AppShell's authenticated-`user` assumption never applies here.
+  {
+    path: ROUTES.fulfillment,
+    element: (
+      <Suspense fallback={null}>
+        <FulfillmentPage />
       </Suspense>
     ),
   },

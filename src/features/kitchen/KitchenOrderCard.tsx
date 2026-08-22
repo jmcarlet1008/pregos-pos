@@ -3,6 +3,7 @@ import type { BusinessSettings, Order, OrderLine, OrderLineModifier } from '../.
 import { formatCurrency } from '../../lib/currency'
 import {
   formatDeliveryAddress,
+  formatPhase,
   getEffectivePrepMinutes,
   getFulfillmentKind,
   getStartByDate,
@@ -30,6 +31,37 @@ const URGENCY_CLASSES: Record<Urgency, string> = {
 }
 
 const URGENCY_DOT: Record<Urgency, string> = { urgent: '🔴', soon: '🟡', ok: '🟢' }
+
+/** Bold, non-theme colors (same reasoning as /fulfillment's column headers) — the goal
+ *  is a badge that pops enough to catch the eye at a glance across several cards, not
+ *  one that blends into the app's usual Material-token palette. */
+const PHASE_BADGE_COLORS = [
+  'bg-blue-600',
+  'bg-purple-600',
+  'bg-emerald-700',
+  'bg-amber-600',
+  'bg-pink-600',
+  'bg-cyan-700',
+  'bg-indigo-600',
+  'bg-rose-600',
+]
+
+/** Same phase string always gets the same color, across every card — that's what lets
+ *  staff spot "these two are going to the same place" without reading each address. */
+function colorForPhase(phase: string): string {
+  let hash = 0
+  for (let i = 0; i < phase.length; i++) hash = (hash * 31 + phase.charCodeAt(i)) >>> 0
+  return PHASE_BADGE_COLORS[hash % PHASE_BADGE_COLORS.length]
+}
+
+/** Only a structured delivery address has a distinct phase field — a freeform address
+ *  is one free-text area string with nothing to pull out on its own. Runs the same
+ *  formatPhase() normalization as the full address line, so "2" and "Phase 2" from two
+ *  different customers still match colors as the same phase instead of two different ones. */
+function getDeliveryPhase(order: Order): string | null {
+  const address = order.delivery_address
+  return address?.type === 'structured' && address.phase ? formatPhase(address.phase) : null
+}
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
@@ -112,6 +144,7 @@ export function KitchenOrderCard({
   const effectiveMinutes = getEffectivePrepMinutes(order, settings)
   const FulfillmentIcon = FULFILLMENT_ICON[kind]
   const manuallyPrioritized = order.queue_priority != null
+  const deliveryPhase = kind === 'delivery' ? getDeliveryPhase(order) : null
 
   return (
     <div className="flex gap-sm rounded-lg border border-surface-dim bg-surface-container-lowest p-md">
@@ -136,6 +169,13 @@ export function KitchenOrderCard({
               {FULFILLMENT_LABEL[kind]}
               {kind === 'delivery' && order.delivery_zone ? ` · ${order.delivery_zone}` : ''}
             </span>
+            {deliveryPhase && (
+              // Same color every time this exact phase string appears on any card — lets
+              // staff spot same-phase deliveries to batch-cook at a glance, not by reading.
+              <span className={`rounded-full px-sm py-xs text-label-bold text-white ${colorForPhase(deliveryPhase)}`}>
+                📍 {deliveryPhase}
+              </span>
+            )}
             {manuallyPrioritized && (
               <span className="rounded bg-primary-container px-xs py-[2px] text-label-sm font-bold text-on-primary-container">
                 Manually prioritized
@@ -154,6 +194,10 @@ export function KitchenOrderCard({
             </span>
           )}
         </div>
+
+        {kind !== 'walk-in' && order.customer_name && (
+          <div className="text-body-md font-bold text-on-surface">👤 {order.customer_name}</div>
+        )}
 
         {kind === 'delivery' && order.delivery_address && (
           <div className="text-body-md text-on-surface-variant">📍 {formatDeliveryAddress(order.delivery_address)}</div>
