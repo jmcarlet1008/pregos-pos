@@ -1,10 +1,6 @@
 import type { BusinessSettings } from '../../db'
 
-export type OpenState =
-  | { open: true }
-  | { open: false; reason: 'manual' }
-  | { open: false; reason: 'before_open'; opensAt: string; closesAt: string }
-  | { open: false; reason: 'after_close'; closesAt: string }
+export type OpenState = { open: true } | { open: false; reason: 'manual' }
 
 function parseTimeToday(hhmm: string, now: Date): Date {
   const [hours, minutes] = hhmm.split(':').map(Number)
@@ -20,40 +16,17 @@ function addDays(date: Date, days: number): Date {
 }
 
 /**
- * Whether /order should show the ordering flow right now: the manual
- * accepting_orders_today switch takes priority (an explicit staff override — early
- * closure, holiday, out of stock), then the scheduled delivery_start_time/end_time
- * window. Re-run this against a fresh `now` periodically (see OrderPage's interval) so
- * a window boundary passing closes the page even without a BusinessSettings change to
- * react to via Realtime.
- *
- * delivery_end_time can be earlier in the day than delivery_start_time (e.g. 10:00 to
- * 01:00) — an overnight window that closes after midnight, common for dinner service.
- * That's handled as three cases relative to `now`'s time-of-day: still inside the tail
- * of the window that opened yesterday, closed in the gap waiting for today's opening,
- * or inside today's window (which then runs into tomorrow morning).
+ * Whether /order should show the ordering flow right now. This reflects only the
+ * manual accepting_orders_today switch — an explicit staff override (early closure,
+ * holiday, out of stock, or "we're open for advance orders before delivery starts").
+ * It deliberately does NOT depend on delivery_start_time/end_time at all: that window
+ * only constrains which pickup/delivery time slot a customer may choose (see
+ * generateTimeSlots/slotToIso below), not whether the site can be used. A shop can
+ * flip this on hours before its delivery window opens to start collecting advance
+ * orders for later that day.
  */
-export function evaluateOpenState(settings: BusinessSettings, now: Date = new Date()): OpenState {
-  if (!settings.accepting_orders_today) return { open: false, reason: 'manual' }
-
-  const opensAt = settings.delivery_start_time
-  const closesAt = settings.delivery_end_time
-  const overnight = closesAt <= opensAt
-
-  if (!overnight) {
-    const opens = parseTimeToday(opensAt, now)
-    const closes = parseTimeToday(closesAt, now)
-    if (now < opens) return { open: false, reason: 'before_open', opensAt, closesAt }
-    if (now > closes) return { open: false, reason: 'after_close', closesAt }
-    return { open: true }
-  }
-
-  const opensToday = parseTimeToday(opensAt, now)
-  const closesThisMorning = parseTimeToday(closesAt, now)
-
-  if (now <= closesThisMorning) return { open: true } // tail of yesterday's window
-  if (now < opensToday) return { open: false, reason: 'before_open', opensAt, closesAt } // gap before today's opening
-  return { open: true } // today's window, runs until tomorrow morning
+export function evaluateOpenState(settings: BusinessSettings): OpenState {
+  return settings.accepting_orders_today ? { open: true } : { open: false, reason: 'manual' }
 }
 
 /**

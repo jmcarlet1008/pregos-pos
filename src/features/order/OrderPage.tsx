@@ -12,6 +12,7 @@ import { DeliveryZoneStep } from './DeliveryZoneStep'
 import { FulfillmentStep } from './FulfillmentStep'
 import { MenuBrowser } from './MenuBrowser'
 import { OrderConfirmation } from './OrderConfirmation'
+import { OrderProgress, orderProgressFor } from './OrderProgress'
 import {
   type Fulfillment,
   type OnlineMenu,
@@ -24,19 +25,28 @@ import {
 import { PaymentStep } from './PaymentStep'
 import { TimeSlotStep } from './TimeSlotStep'
 
-type Screen = 'menu' | 'fulfillment' | 'zone' | 'timeslot' | 'payment' | 'customerInfo' | 'confirmation'
+export type Screen = 'menu' | 'fulfillment' | 'zone' | 'timeslot' | 'payment' | 'customerInfo' | 'confirmation'
 
 function id() {
   return crypto.randomUUID()
 }
 
-function PageShell({ settings, children }: { settings?: BusinessSettings | null; children: ReactNode }) {
+interface PageShellProps {
+  settings?: BusinessSettings | null
+  // Omitted on the not-configured/loadError/loading/closed early returns below, where
+  // there's no meaningful step to show progress against.
+  progress?: { steps: string[]; currentIndex: number }
+  children: ReactNode
+}
+
+function PageShell({ settings, progress, children }: PageShellProps) {
   return (
     <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-md bg-surface p-md">
       <header className="flex items-center gap-sm border-b border-surface-dim pb-sm">
         {settings?.logo_url && <img src={settings.logo_url} alt="" className="h-10 w-10 rounded-full object-cover" />}
         <h1 className="text-headline-md text-on-surface">{settings?.name || "Prego's Cucina"}</h1>
       </header>
+      {progress && <OrderProgress {...progress} />}
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </div>
   )
@@ -69,33 +79,46 @@ export function OrderPage() {
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
+    // StrictMode (see main.tsx) double-invokes this effect in dev: mount, cleanup,
+    // mount. Cleanup fires synchronously, before `load`'s awaits resolve, so a bare
+    // `unsubscribe?.()` cleanup can't cancel the still-in-flight first run — both the
+    // stale and the real run would go on to call subscribeBusinessSettings(), opening
+    // two Realtime subscriptions on the same channel topic and crashing with "cannot
+    // add postgres_changes callbacks ... after subscribe()". `cancelled` lets the stale
+    // run notice, once its awaits finally settle, that it's already been cleaned up.
+    let cancelled = false
     let unsubscribe: (() => void) | null = null
 
     async function load() {
       try {
         const [initialSettings, initialMenu] = await Promise.all([fetchBusinessSettings(), fetchMenu()])
+        if (cancelled) return
         setSettings(initialSettings)
         setMenu(initialMenu)
         unsubscribe = subscribeBusinessSettings(setSettings)
       } catch (err) {
+        if (cancelled) return
         setLoadError(err instanceof Error ? err.message : 'Failed to load. Please refresh and try again.')
       }
     }
 
     void load()
-    return () => unsubscribe?.()
+    return () => {
+      cancelled = true
+      unsubscribe?.()
+    }
   }, [])
 
-  // Realtime only fires on a BusinessSettings row change — it can't tell us when the
-  // wall clock alone crosses delivery_start_time/end_time. Re-evaluating periodically
-  // catches that boundary too, so the page closes/opens on schedule with nobody having
-  // to touch a setting.
+  // evaluateOpenState no longer depends on time of day (see businessHours.ts) — this
+  // interval isn't for that. It's for timeSlots below: generateTimeSlots needs a
+  // periodically-refreshed `now` to drop slots as they pass and to roll its
+  // overnight-window day-anchor forward across midnight.
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(interval)
   }, [])
 
-  const openState = settings ? evaluateOpenState(settings, now) : null
+  const openState = settings ? evaluateOpenState(settings) : null
   const timeSlots = useMemo(() => (settings ? generateTimeSlots(settings, now) : []), [settings, now])
 
   function handleAddConfirm(selections: ModifierOption[], quantity: number, remarks: string | null) {
@@ -129,7 +152,7 @@ export function OrderPage() {
   }
 
   function handleZoneConfirm(zone: DeliveryZone, address: DeliveryAddress, lat: number | null, lng: number | null) {
-    setFulfillment({ type: 'delivery', zoneName: zone.name, address, lat, lng })
+    setFulfillment({ type: 'delivery', zoneName: zone.name, zoneAutoRoute: zone.auto_route, address, lat, lng })
     setScreen('timeslot')
   }
 
@@ -210,9 +233,10 @@ export function OrderPage() {
   }
 
   const editingProduct = editingLine?.product ?? null
+  const progress = orderProgressFor(screen, fulfillmentType)
 
   return (
-    <PageShell settings={settings}>
+    <PageShell settings={settings} progress={progress}>
       {screen === 'menu' && (
         <>
           <MenuBrowser categories={menu.categories} products={menu.products} onSelect={setAddModalProduct} />

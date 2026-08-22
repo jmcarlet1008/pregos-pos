@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<!--
+  Reference mockup only — not wired into the app (no route, no import, not built by
+  Vite). Kept here for future work, not deleted after review on 2026-08-21:
+
+  - Panel 1 (Customer Order Page /order): a single long-scrolling-page layout, all
+    steps stacked and visible at once. The actual shipped /order (src/features/order/)
+    took a different approach instead — a step-wizard (menu -> fulfillment -> zone ->
+    timeslot -> payment -> customerInfo -> confirmation), already live in production.
+    Revisit this panel only if the step-wizard UX turns out to feel slow/annoying in
+    real use — see the discussion in project history for the trade-offs considered.
+
+  - Panels 2 and 3 (Kitchen View /kitchen, Fulfillment View /fulfillment): NOT built
+    yet — these are the actual next piece of work. vite.config.ts already reserves
+    manualChunks/navigateFallbackDenylist entries for both routes in anticipation of
+    this. Panel 2 specifies a prep queue sorted by
+    (requested_time - average_prep_time), walk-ins always pinned to the top, with
+    manual drag-to-reorder override. Panel 3 specifies a 3-column Walk-in/Pickup/
+    Delivery board for closing out orders once ready. Use this as the starting design
+    reference when that prompt happens.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pregos Cucina — New Screens Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #970000; --primary-dark: #6e0000;
+    --bg: #fbf9f8; --surface: #ffffff; --surface-container: #f3ece9;
+    --on-surface: #241a18; --on-surface-variant: #6f5b57; --outline: #e4d7d3;
+    --success: #2f7d4f; --success-bg: #e6f3ea;
+    --warn: #b8860b; --warn-bg: #fdf3d9;
+    --urgent: #b3261e; --urgent-bg: #fbe9e7;
+    --soon: #b8860b; --soon-bg: #fdf3d9;
+    --ok: #2f7d4f; --ok-bg: #e6f3ea;
+    --radius-sm: 4px; --radius-lg: 8px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Inter', sans-serif; background: #e9e4e1; color: var(--on-surface); padding: 16px; }
+  h1, h2, h3 { font-family: 'Hanken Grotesk', sans-serif; }
+  .tabs { display: flex; gap: 8px; max-width: 1400px; margin: 0 auto 16px; flex-wrap: wrap; }
+  .tab { font-family: 'Hanken Grotesk', sans-serif; font-weight: 700; font-size: 14px; padding: 12px 20px; min-height: 48px; border-radius: 999px; border: 1px solid var(--outline); background: var(--surface); color: var(--on-surface-variant); cursor: pointer; }
+  .tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .panel { display: none; max-width: 1400px; margin: 0 auto; }
+  .panel.active { display: block; }
+  .device { background: var(--bg); border-radius: var(--radius-lg); border: 1px solid var(--outline); overflow: hidden; box-shadow: 0 2px 12px rgba(36,26,24,0.08); position: relative; }
+
+  /* ORDER PAGE */
+  .order-header { background: var(--primary); color: white; padding: 20px; }
+  .order-header .store { font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: 22px; }
+  .order-header .sub { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+  .order-body { padding: 16px; padding-bottom: 90px; display: flex; flex-direction: column; gap: 20px; }
+  .step { background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius-lg); padding: 16px; }
+  .step-title { font-family: 'Hanken Grotesk', sans-serif; font-weight: 700; font-size: 15px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .step-num { background: var(--primary); color: white; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+  .category-row { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; }
+  .cat-chip { flex-shrink: 0; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--outline); background: var(--bg); font-size: 13px; font-weight: 600; }
+  .cat-chip.active { background: var(--on-surface); color: white; border-color: var(--on-surface); }
+  .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .menu-item { border: 1px solid var(--outline); border-radius: var(--radius-sm); padding: 12px; background: var(--bg); display: flex; flex-direction: column; gap: 8px; }
+  .menu-item .name { font-weight: 600; font-size: 14px; }
+  .menu-item .price { color: var(--primary); font-weight: 700; font-size: 14px; }
+  .menu-item .has-mod { font-size: 10px; color: var(--on-surface-variant); font-weight: 600; }
+  .add-btn { min-height: 36px; border-radius: var(--radius-sm); border: none; background: var(--primary); color: white; font-weight: 700; font-size: 13px; cursor: pointer; }
+
+  .cart-section { background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius-lg); padding: 16px; }
+  .cart-empty { font-size: 13px; color: var(--on-surface-variant); text-align: center; padding: 16px 0; }
+  .cart-line { border: 1px solid var(--outline); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 8px; }
+  .cart-line-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .cart-line-name { font-weight: 700; font-size: 14px; }
+  .cart-line-variant { font-size: 12px; color: var(--primary); font-weight: 600; }
+  .cart-line-price { font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .cart-line-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .qty-mini { display: flex; align-items: center; gap: 8px; }
+  .qty-btn-sm { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--primary); background: white; color: var(--primary); font-weight: 800; cursor: pointer; }
+  .remove-link { font-size: 12px; color: var(--urgent); font-weight: 600; cursor: pointer; background: none; border: none; }
+  .remarks-input { width: 100%; margin-top: 8px; border: 1px dashed var(--outline); border-radius: var(--radius-sm); padding: 6px 8px; font-size: 12px; font-family: 'Inter'; background: var(--bg); }
+  .remarks-input::placeholder { color: var(--on-surface-variant); }
+
+  .cart-bar { position: sticky; bottom: 0; left: 0; right: 0; background: var(--on-surface); color: white; padding: 14px 16px; border-radius: var(--radius-lg); display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-family: 'Hanken Grotesk', sans-serif; }
+  .cart-bar .count { font-size: 13px; opacity: 0.8; font-family: 'Inter', sans-serif; }
+  .cart-bar .total { font-weight: 800; font-size: 17px; }
+
+  .pill-row { display: flex; gap: 8px; }
+  .pill-btn { flex: 1; min-height: 48px; border-radius: var(--radius-sm); border: 2px solid var(--outline); background: var(--surface); font-family: 'Hanken Grotesk', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .pill-btn.selected { border-color: var(--primary); background: #fdeceb; color: var(--primary); }
+  .field { margin-top: 10px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--on-surface-variant); display: block; margin-bottom: 4px; }
+  .field input, .field select { width: 100%; min-height: 44px; border: 1px solid var(--outline); border-radius: var(--radius-sm); padding: 0 12px; font-family: 'Inter', sans-serif; font-size: 14px; background: var(--surface); }
+  .note-box { background: var(--warn-bg); border-left: 3px solid var(--warn); padding: 10px 12px; font-size: 13px; border-radius: var(--radius-sm); margin-top: 10px; }
+  .gcash-box { display: flex; gap: 12px; align-items: center; background: var(--surface-container); padding: 12px; border-radius: var(--radius-sm); margin-top: 10px; }
+  .qr-placeholder { width: 64px; height: 64px; background: repeating-linear-gradient(45deg, #241a18, #241a18 4px, white 4px, white 8px); border-radius: 4px; flex-shrink: 0; }
+  .submit-btn { width: 100%; min-height: 52px; background: var(--primary); color: white; border: none; border-radius: var(--radius-sm); font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: 16px; cursor: pointer; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(36,26,24,0.5); z-index: 100; align-items: flex-end; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: white; border-radius: 16px 16px 0 0; width: 100%; max-width: 480px; padding: 20px; }
+  .modal-title { font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: 18px; margin-bottom: 4px; }
+  .modal-price { color: var(--primary); font-weight: 700; margin-bottom: 16px; }
+  .modal-group-label { font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-variant); margin-bottom: 8px; }
+  .modal-chips { display: flex; gap: 8px; margin-bottom: 16px; }
+  .modal-chip { flex: 1; min-height: 48px; border-radius: var(--radius-sm); border: 2px solid var(--outline); background: white; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .modal-chip.selected { border-color: var(--primary); background: #fdeceb; color: var(--primary); }
+  .modal-textarea { width: 100%; min-height: 60px; border: 1px solid var(--outline); border-radius: var(--radius-sm); padding: 10px; font-family: 'Inter'; font-size: 14px; resize: vertical; }
+  .modal-add-btn { width: 100%; min-height: 52px; background: var(--primary); color: white; border: none; border-radius: var(--radius-sm); font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: 15px; margin-top: 16px; cursor: pointer; }
+
+  /* KITCHEN / FULFILLMENT SHARED */
+  .station-header { background: var(--on-surface); color: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+  .station-header .title { font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: 18px; }
+  .station-header .clock { font-size: 13px; opacity: 0.7; }
+  .kitchen-body { padding: 16px; }
+  .section-heading { font-family: 'Hanken Grotesk', sans-serif; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-surface-variant); margin: 20px 0 4px; display: flex; justify-content: space-between; align-items: center; }
+  .section-heading:first-child { margin-top: 0; }
+  .section-sub { font-size: 11px; font-weight: 500; text-transform: none; color: var(--on-surface-variant); margin-bottom: 10px; }
+  .card-grid { display: flex; flex-direction: column; gap: 10px; }
+  .order-card { background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius-lg); padding: 14px; display: flex; gap: 10px; }
+  .order-card.pending { border-left: 4px solid var(--warn); }
+  .drag-handle { color: var(--on-surface-variant); font-size: 18px; cursor: grab; padding-top: 4px; user-select: none; }
+  .card-content { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .card-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .order-no { font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: 18px; }
+  .chip { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; }
+  .chip.walkin { background: #e6ecf3; color: #2b4a7d; }
+  .chip.pickup { background: #eae6f5; color: #5b3f9e; }
+  .chip.delivery { background: var(--ok-bg); color: var(--success); }
+  .urgency { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 4px; }
+  .urgency.urgent { background: var(--urgent-bg); color: var(--urgent); }
+  .urgency.soon { background: var(--soon-bg); color: var(--soon); }
+  .urgency.ok { background: var(--ok-bg); color: var(--ok); }
+  .items-list-big { font-size: 15px; font-weight: 700; color: var(--on-surface); line-height: 1.5; }
+  .items-list-big .qty { color: var(--primary); }
+  .item-remark { font-size: 12px; font-weight: 500; color: var(--on-surface-variant); font-style: italic; }
+  .meta-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--on-surface-variant); border-top: 1px dashed var(--outline); padding-top: 8px; }
+  .manual-tag { font-size: 10px; font-weight: 700; color: var(--primary); background: #fdeceb; padding: 2px 6px; border-radius: 4px; }
+  .card-btn { min-height: 48px; border: none; border-radius: var(--radius-sm); font-family: 'Hanken Grotesk', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; margin-top: 2px; }
+  .card-btn.primary { background: var(--primary); color: white; }
+  .card-btn.warn { background: var(--warn); color: white; }
+  .card-btn.success { background: var(--success); color: white; }
+  .override-note { font-size: 12px; color: var(--on-surface-variant); background: var(--surface-container); padding: 10px 12px; border-radius: var(--radius-sm); margin-bottom: 14px; line-height: 1.5; }
+
+  .fulfill-columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .fulfill-columns { grid-template-columns: 1fr; } }
+  .col-header { font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: 15px; padding: 10px 12px; border-radius: var(--radius-sm) var(--radius-sm) 0 0; color: white; }
+  .col-header.walkin { background: #2b4a7d; }
+  .col-header.pickup { background: #5b3f9e; }
+  .col-header.delivery { background: var(--success); }
+  .col-body { background: var(--surface-container); padding: 10px; border-radius: 0 0 var(--radius-sm) var(--radius-sm); display: flex; flex-direction: column; gap: 10px; min-height: 120px; }
+  .sub-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-variant); margin-top: 4px; }
+  .fulfill-card { background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius-sm); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .fulfill-items { font-size: 14px; font-weight: 700; color: var(--on-surface); line-height: 1.5; }
+  .fulfill-items .qty { color: var(--primary); }
+  .contact-box { background: var(--surface-container); border-radius: var(--radius-sm); padding: 8px 10px; }
+  .contact-box .cname { font-weight: 700; font-size: 13px; }
+  .contact-box .caddr { font-size: 12px; color: var(--on-surface-variant); margin-top: 2px; }
+  .contact-box .cphone { font-size: 12px; color: var(--on-surface-variant); }
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <button class="tab active" data-panel="order">1 · Customer Order Page (/order)</button>
+  <button class="tab" data-panel="kitchen">2 · Kitchen View (/kitchen)</button>
+  <button class="tab" data-panel="fulfillment">3 · Fulfillment View (/fulfillment)</button>
+</div>
+
+<!-- PANEL 1: ORDER PAGE -->
+<div class="panel active" id="order">
+  <div class="device">
+    <div class="order-header">
+      <div class="store">Prego's Cucina</div>
+      <div class="sub">Order online · Pickup or Delivery</div>
+    </div>
+    <div class="order-body">
+
+      <div class="step">
+        <div class="step-title"><span class="step-num">1</span> Build your order</div>
+        <div class="category-row">
+          <div class="cat-chip active">All</div>
+          <div class="cat-chip">Pizza</div>
+          <div class="cat-chip">Pasta</div>
+          <div class="cat-chip">Drinks</div>
+        </div>
+        <div class="menu-grid">
+          <div class="menu-item">
+            <div class="name">Margherita Pizza</div>
+            <div class="price">from ₱350.00</div>
+            <div class="has-mod">Size · Remarks</div>
+            <button class="add-btn" onclick="openModal('Margherita Pizza', 350)">Choose Options</button>
+          </div>
+          <div class="menu-item">
+            <div class="name">Pepperoni Pizza</div>
+            <div class="price">from ₱420.00</div>
+            <div class="has-mod">Size · Remarks</div>
+            <button class="add-btn" onclick="openModal('Pepperoni Pizza', 420)">Choose Options</button>
+          </div>
+          <div class="menu-item">
+            <div class="name">Spaghetti Bolognese</div>
+            <div class="price">₱280.00</div>
+            <div class="has-mod">Remarks only</div>
+            <button class="add-btn" onclick="quickAdd('Spaghetti Bolognese', 280)">+ Add</button>
+          </div>
+          <div class="menu-item">
+            <div class="name">Iced Tea</div>
+            <div class="price">₱90.00</div>
+            <div class="has-mod">&nbsp;</div>
+            <button class="add-btn" onclick="quickAdd('Iced Tea', 90)">+ Add</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cart-section">
+        <div class="step-title" style="margin-bottom:10px;">🛒 Your Cart</div>
+        <div id="cart-lines"><div class="cart-empty">No items yet — tap a product above to add it.</div></div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="step-num">2</span> Pickup or Delivery?</div>
+        <div class="pill-row">
+          <button class="pill-btn" onclick="toggleFulfillType(this,'pickup')">🥡 Pickup</button>
+          <button class="pill-btn selected" onclick="toggleFulfillType(this,'delivery')">🛵 Delivery</button>
+        </div>
+        <div id="delivery-zone-block">
+          <div class="pill-row" style="margin-top:12px;">
+            <button class="pill-btn selected" onclick="toggleZone(this,'within')">Within Camella (free)</button>
+            <button class="pill-btn" onclick="toggleZone(this,'outside')">Outside Camella</button>
+          </div>
+          <div id="within-fields">
+            <div class="field"><label>Block / Lot / Phase</label><input placeholder="e.g. Blk 4 Lot 12, Phase 2"></div>
+            <div class="field"><label>Street</label><input placeholder="e.g. Narra Street"></div>
+          </div>
+          <div id="outside-note" style="display:none;">
+            <div class="note-box">Outside Camella orders need a bit of manual coordination — after you submit, we'll message you on Facebook to confirm the delivery fee and details.</div>
+            <div class="field"><label>Rough area / landmark</label><input placeholder="e.g. near XYZ Subdivision gate"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="step-num">3</span> When?</div>
+        <div class="field">
+          <label>Delivery time</label>
+          <select><option>5:00 PM</option><option selected>5:30 PM</option><option>6:00 PM</option><option>6:30 PM</option></select>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="step-num">4</span> Payment</div>
+        <div class="pill-row">
+          <button class="pill-btn selected" onclick="togglePay(this,'cash')">💵 Cash</button>
+          <button class="pill-btn" onclick="togglePay(this,'gcash')">📱 GCash</button>
+        </div>
+        <div id="cash-fields">
+          <div class="field"><label>How much will you hand over? (so we bring the right change)</label><input placeholder="e.g. ₱1000"></div>
+        </div>
+        <div id="gcash-fields" style="display:none;">
+          <div class="gcash-box">
+            <div class="qr-placeholder"></div>
+            <div style="font-size:13px;">Send to <b>GCash 0917 XXX XXXX</b><br>Scan, send the exact amount, then tap Confirm below.<br>Please also send us a screenshot via Messenger.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="step-num">5</span> Your details</div>
+        <div class="field"><label>Full name</label><input placeholder="Juan Dela Cruz"></div>
+        <div class="field"><label>Contact number</label><input placeholder="09XX XXX XXXX"></div>
+      </div>
+
+      <button class="submit-btn" id="submit-btn">Place Order — ₱0.00</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODIFIER MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-item-name">Margherita Pizza</div>
+    <div class="modal-price" id="modal-item-price">₱350.00</div>
+    <div class="modal-group-label">Size</div>
+    <div class="modal-chips">
+      <button class="modal-chip selected" onclick="selectSize(this,0)">Regular</button>
+      <button class="modal-chip" onclick="selectSize(this,150)">Large +₱150</button>
+    </div>
+    <div class="modal-group-label">Remarks / special instructions (optional)</div>
+    <textarea class="modal-textarea" id="modal-remarks" placeholder="e.g. extra crust, less cheese, no onions"></textarea>
+    <button class="modal-add-btn" id="modal-add-btn" onclick="confirmModalAdd()">Add to Cart — ₱350.00</button>
+  </div>
+</div>
+
+<!-- PANEL 2: KITCHEN -->
+<div class="panel" id="kitchen">
+  <div class="device">
+    <div class="station-header">
+      <div class="title">🍳 Kitchen View</div>
+      <div class="clock">6:14 PM</div>
+    </div>
+    <div class="kitchen-body">
+
+      <div class="override-note">
+        ⏱️ Priority = <b>requested time minus average prep time</b> (15–20 min, set in Settings), so the kitchen starts each order early enough to be ready on time — not just whichever came in first. <b>Walk-ins always sit at the top</b>, since that customer is already standing at the counter. ✋ A manager can still drag to override this anytime from Order Management.
+      </div>
+
+      <div class="section-heading">⏳ Pending Confirmation (1)</div>
+      <div class="card-grid">
+        <div class="order-card pending">
+          <div class="card-content">
+            <div class="card-top">
+              <div class="order-no">#48</div>
+              <span class="chip delivery">Delivery · Outside</span>
+            </div>
+            <div class="items-list-big"><span class="qty">1×</span> Pepperoni Pizza (Large)</div>
+            <div class="item-remark">"less cheese please"</div>
+            <div class="items-list-big"><span class="qty">2×</span> Iced Tea</div>
+            <div class="meta-row"><span>Requested 7:00 PM</span><span>Cash · ₱1000 tendered</span></div>
+            <button class="card-btn warn">Confirm &amp; Send to Kitchen</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-heading">🔥 Preparing (4)</div>
+      <div class="section-sub">Sorted by start-by time — the moment kitchen needs to begin each order to hit its requested time.</div>
+      <div class="card-grid">
+
+        <div class="order-card">
+          <div class="drag-handle">⋮⋮</div>
+          <div class="card-content">
+            <div class="card-top">
+              <div style="display:flex;align-items:center;gap:8px;"><div class="order-no">#46</div><span class="chip walkin">Walk-in</span></div>
+              <span class="urgency urgent">🔴 Waiting now</span>
+            </div>
+            <div class="items-list-big"><span class="qty">2×</span> Margherita Pizza (Regular)</div>
+            <div class="items-list-big"><span class="qty">1×</span> Fettuccine Alfredo</div>
+            <div class="meta-row"><span>Received 3 min ago · customer at counter</span><span>Cash</span></div>
+            <button class="card-btn primary">Mark Ready</button>
+          </div>
+        </div>
+
+        <div class="order-card">
+          <div class="drag-handle">⋮⋮</div>
+          <div class="card-content">
+            <div class="card-top">
+              <div style="display:flex;align-items:center;gap:8px;"><div class="order-no">#47</div><span class="chip pickup">Pickup</span><span class="manual-tag">Manually prioritized</span></div>
+              <span class="urgency urgent">🔴 Start now</span>
+            </div>
+            <div class="items-list-big"><span class="qty">1×</span> Spaghetti Bolognese</div>
+            <div class="item-remark">"extra spicy if possible"</div>
+            <div class="items-list-big"><span class="qty">1×</span> Bottled Water</div>
+            <div class="meta-row"><span>Requested 6:30 PM · 15 min prep — start by 6:15</span><span>GCash ✓</span></div>
+            <button class="card-btn primary">Mark Ready</button>
+          </div>
+        </div>
+
+        <div class="order-card">
+          <div class="drag-handle">⋮⋮</div>
+          <div class="card-content">
+            <div class="card-top">
+              <div style="display:flex;align-items:center;gap:8px;"><div class="order-no">#49</div><span class="chip delivery">Delivery · Within</span></div>
+              <span class="urgency soon">🟡 Start by 6:30 <span style="font-weight:600;">(in 16 min)</span></span>
+            </div>
+            <div class="items-list-big"><span class="qty">1×</span> Fettuccine Alfredo</div>
+            <div class="meta-row"><span>Requested 6:45 PM · 15 min prep</span><span>Cash · ₱500 tendered</span></div>
+            <button class="card-btn primary">Mark Ready</button>
+          </div>
+        </div>
+
+        <div class="order-card">
+          <div class="drag-handle">⋮⋮</div>
+          <div class="card-content">
+            <div class="card-top">
+              <div style="display:flex;align-items:center;gap:8px;"><div class="order-no">#50</div><span class="chip delivery">Delivery · Within</span></div>
+              <span class="urgency ok">🟢 Start by 6:50 <span style="font-weight:600;">(in 36 min)</span></span>
+            </div>
+            <div class="items-list-big"><span class="qty">2×</span> Margherita Pizza (Large)</div>
+            <div class="items-list-big"><span class="qty">3×</span> Iced Tea</div>
+            <div class="meta-row"><span>Requested 7:10 PM · 20 min prep (larger order)</span><span>GCash ✓</span></div>
+            <button class="card-btn primary">Mark Ready</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL 3: FULFILLMENT -->
+<div class="panel" id="fulfillment">
+  <div class="device">
+    <div class="station-header">
+      <div class="title">📦 Fulfillment View</div>
+      <div class="clock">6:19 PM</div>
+    </div>
+    <div class="kitchen-body">
+      <div class="fulfill-columns">
+        <div>
+          <div class="col-header walkin">Walk-in</div>
+          <div class="col-body">
+            <div class="fulfill-card">
+              <div class="card-top"><div class="order-no">#45</div></div>
+              <div class="fulfill-items"><span class="qty">1×</span> Margherita Pizza<br><span class="qty">2×</span> Iced Tea</div>
+              <button class="card-btn success">Served</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-header pickup">Pickup</div>
+          <div class="col-body">
+            <div class="fulfill-card">
+              <div class="card-top"><div class="order-no">#47</div></div>
+              <div class="fulfill-items"><span class="qty">1×</span> Spaghetti Bolognese<br><span class="qty">1×</span> Bottled Water</div>
+              <div class="contact-box"><div class="cname">Juan Dela Cruz</div><div class="cphone">📞 0917 XXX XXXX</div></div>
+              <button class="card-btn success">Picked Up</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-header delivery">Delivery</div>
+          <div class="col-body">
+            <div class="sub-label">Ready to Dispatch</div>
+            <div class="fulfill-card">
+              <div class="card-top"><div class="order-no">#46</div></div>
+              <div class="fulfill-items"><span class="qty">2×</span> Margherita Pizza<br><span class="qty">1×</span> Fettuccine Alfredo</div>
+              <div class="contact-box"><div class="cname">Maria Santos</div><div class="caddr">📍 Blk 4 Lot 12, Phase 2, Narra St.</div><div class="cphone">📞 0918 XXX XXXX</div></div>
+              <button class="card-btn primary">Out for Delivery</button>
+            </div>
+            <div class="sub-label">Delivery Queue</div>
+            <div class="fulfill-card">
+              <div class="card-top"><div class="order-no">#44</div></div>
+              <div class="fulfill-items"><span class="qty">1×</span> Pepperoni Pizza<br><span class="qty">2×</span> Bottled Water</div>
+              <div class="contact-box"><div class="cname">Ana Reyes</div><div class="caddr">📍 Blk 7 Lot 3, Phase 1</div><div class="cphone">📞 0918 XXX XXXX</div></div>
+              <button class="card-btn success">Delivered</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.panel).classList.add('active');
+    });
+  });
+
+  let cartLines = [];
+  let lineIdCounter = 1;
+  let pendingItem = { name: '', basePrice: 0, sizeAdj: 0 };
+
+  function openModal(name, basePrice) {
+    pendingItem = { name, basePrice, sizeAdj: 0 };
+    document.getElementById('modal-item-name').textContent = name;
+    document.getElementById('modal-item-price').textContent = '₱' + basePrice.toFixed(2);
+    document.getElementById('modal-remarks').value = '';
+    document.querySelectorAll('.modal-chip').forEach((c,i) => c.classList.toggle('selected', i===0));
+    document.getElementById('modal-add-btn').textContent = 'Add to Cart — ₱' + basePrice.toFixed(2);
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  function selectSize(btn, adj) {
+    document.querySelectorAll('.modal-chip').forEach(c => c.classList.remove('selected'));
+    btn.classList.add('selected');
+    pendingItem.sizeAdj = adj;
+    const total = pendingItem.basePrice + adj;
+    document.getElementById('modal-add-btn').textContent = 'Add to Cart — ₱' + total.toFixed(2);
+  }
+
+  function confirmModalAdd() {
+    const remarks = document.getElementById('modal-remarks').value.trim();
+    const variant = pendingItem.sizeAdj > 0 ? 'Large' : 'Regular';
+    const price = pendingItem.basePrice + pendingItem.sizeAdj;
+    cartLines.push({ id: lineIdCounter++, name: pendingItem.name, variant, price, qty: 1, remarks });
+    document.getElementById('modal-overlay').classList.remove('open');
+    renderCart();
+  }
+
+  function quickAdd(name, price) {
+    cartLines.push({ id: lineIdCounter++, name, variant: null, price, qty: 1, remarks: '' });
+    renderCart();
+  }
+
+  function changeLineQty(id, delta) {
+    const line = cartLines.find(l => l.id === id);
+    if (!line) return;
+    line.qty += delta;
+    if (line.qty <= 0) cartLines = cartLines.filter(l => l.id !== id);
+    renderCart();
+  }
+
+  function removeLine(id) {
+    cartLines = cartLines.filter(l => l.id !== id);
+    renderCart();
+  }
+
+  function updateRemarks(id, val) {
+    const line = cartLines.find(l => l.id === id);
+    if (line) line.remarks = val;
+  }
+
+  function renderCart() {
+    const container = document.getElementById('cart-lines');
+    if (cartLines.length === 0) {
+      container.innerHTML = '<div class="cart-empty">No items yet — tap a product above to add it.</div>';
+    } else {
+      container.innerHTML = cartLines.map(line => {
+        const lineTotal = line.price * line.qty;
+        return '<div class="cart-line">' +
+          '<div class="cart-line-top">' +
+            '<div>' +
+              '<div class="cart-line-name">' + line.name + (line.variant ? ' <span class="cart-line-variant">(' + line.variant + ')</span>' : '') + '</div>' +
+            '</div>' +
+            '<div class="cart-line-price">₱' + lineTotal.toFixed(2) + '</div>' +
+          '</div>' +
+          '<div class="cart-line-controls">' +
+            '<div class="qty-mini">' +
+              '<button class="qty-btn-sm" onclick="changeLineQty(' + line.id + ',-1)">−</button>' +
+              '<span style="font-weight:800;">' + line.qty + '</span>' +
+              '<button class="qty-btn-sm" onclick="changeLineQty(' + line.id + ',1)">+</button>' +
+            '</div>' +
+            '<button class="remove-link" onclick="removeLine(' + line.id + ')">Remove</button>' +
+          '</div>' +
+          '<input class="remarks-input" placeholder="+ Add remarks (e.g. no onions)" value="' + line.remarks.replace(/"/g,'&quot;') + '" onchange="updateRemarks(' + line.id + ', this.value)">' +
+        '</div>';
+      }).join('');
+    }
+    let total = 0, count = 0;
+    cartLines.forEach(l => { total += l.price * l.qty; count += l.qty; });
+    document.getElementById('submit-btn').textContent = 'Place Order — ₱' + total.toFixed(2);
+  }
+
+  function toggleFulfillType(btn, type) {
+    btn.parentElement.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('delivery-zone-block').style.display = type === 'pickup' ? 'none' : 'block';
+  }
+
+  function toggleZone(btn, zone) {
+    btn.parentElement.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('within-fields').style.display = zone === 'within' ? 'block' : 'none';
+    document.getElementById('outside-note').style.display = zone === 'outside' ? 'block' : 'none';
+  }
+
+  function togglePay(btn, method) {
+    btn.parentElement.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('cash-fields').style.display = method === 'cash' ? 'block' : 'none';
+    document.getElementById('gcash-fields').style.display = method === 'gcash' ? 'block' : 'none';
+  }
+</script>
+
+</body>
+</html>

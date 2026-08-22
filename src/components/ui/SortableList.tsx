@@ -24,7 +24,12 @@ export interface DragHandleProps {
 export interface SortableListProps<T> {
   items: T[]
   getId: (item: T) => string
-  onReorder: (orderedIds: string[]) => void
+  // activeId/overId (the dragged item and its drop target, straight from the
+  // DragEndEvent) are extra, optional-to-use trailing args — existing callers that only
+  // destructure orderedIds keep working unchanged. Added for src/features/kitchen/,
+  // which needs to know *which single* item moved to compute a fractional reorder key
+  // touching only that one row, rather than re-deriving it from an array diff.
+  onReorder: (orderedIds: string[], activeId: string, overId: string) => void
   renderItem: (item: T, drag: DragHandleProps) => ReactNode
   className?: string
 }
@@ -58,10 +63,12 @@ export function SortableList<T>({ items, getId, onReorder, renderItem, className
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
-    const oldIndex = ids.indexOf(String(active.id))
-    const newIndex = ids.indexOf(String(over.id))
+    const activeId = String(active.id)
+    const overId = String(over.id)
+    const oldIndex = ids.indexOf(activeId)
+    const newIndex = ids.indexOf(overId)
     if (oldIndex === -1 || newIndex === -1) return
-    onReorder(arrayMove(ids, oldIndex, newIndex))
+    onReorder(arrayMove(ids, oldIndex, newIndex), activeId, overId)
   }
 
   return (

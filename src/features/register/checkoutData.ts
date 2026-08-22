@@ -1,4 +1,5 @@
 import { db, timestamps, touch, touchPatch, type Payment } from '../../db'
+import { getInitialKitchenStatus } from '../../lib/orderWorkflow'
 import type { CompletedPaymentInput } from '../payments/PaymentProvider'
 
 function id() {
@@ -65,7 +66,10 @@ export async function completeOrder(
       }
 
       const completed_at = new Date().toISOString()
-      await db.orders.put(touch({ ...order, status: 'completed', user_id: userId, completed_at }))
+      // Dine-in enters the kitchen queue the moment payment completes — never sits at
+      // 'pending_confirmation' (that's only for manual-confirmation delivery zones).
+      const kitchen_status = getInitialKitchenStatus({ channel: 'in_store', fulfillmentType: null, zoneAutoRoute: null })
+      await db.orders.put(touch({ ...order, status: 'completed', user_id: userId, completed_at, kitchen_status }))
 
       return payment.id
     },
@@ -76,6 +80,16 @@ export async function completeOrder(
  * Voids a completed order and restores exactly the stock deducted at sale time,
  * reversing the order's own "sale" StockAdjustment records rather than recomputing
  * from current product/modifier definitions (which may have changed since the sale).
+ *
+ * NOTE: /kitchen (and later /fulfillment) write kitchen_status/queue_priority directly
+ * to Supabase, bypassing Dexie entirely — so this device's local copy of `order` can be
+ * stale relative to those fields by the time a manager voids here. touch() below will
+ * re-mark the row 'pending', and since orders is conflictAware (src/sync/tables.ts), the
+ * next push either applies cleanly or — if the remote row genuinely diverged in the
+ * meantime — gets frozen as a sync_conflicts row rather than silently clobbered (see
+ * push.ts's pushConflictAware). Order Management (a future prompt, which also writes
+ * queue_priority) should be aware a void can produce one of these; nothing further to
+ * fix here since cancellation itself is explicitly out of scope for /kitchen.
  */
 export async function voidOrder(orderId: string, userId: string | null): Promise<void> {
   await db.transaction('rw', [db.orders, db.products, db.stockAdjustments], async () => {

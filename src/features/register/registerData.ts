@@ -37,6 +37,12 @@ export async function createOrder(): Promise<string> {
     user_id: null,
     completed_at: null,
     prep_time_override_minutes: null,
+    // Irrelevant while the cart is still being built (kitchen only ever queries
+    // 'pending_confirmation'/'preparing') — completeOrder() below sets the real value
+    // the moment payment completes, via the same getInitialKitchenStatus() every order
+    // path routes through.
+    kitchen_status: 'new',
+    queue_priority: null,
     // Register always creates an in-store order with no online-ordering details — see
     // src/features/order/orderSupabaseData.ts for how /order fills these in instead.
     channel: 'in_store',

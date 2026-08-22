@@ -130,3 +130,37 @@ export function RefreshIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   )
 }
+
+/** Walk-in / dine-in: a customer standing at the counter. */
+export function WalkInIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="6" r="3" stroke="currentColor" />
+      <path d="M6 21v-2a6 6 0 0 1 12 0v2" stroke="currentColor" />
+      <path d="M2 17h20" stroke="currentColor" />
+    </Icon>
+  )
+}
+
+/** Pickup: a takeout bag. */
+export function BagIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M6 8h12l1 13H5L6 8Z" stroke="currentColor" />
+      <path d="M9 8V6a3 3 0 0 1 6 0v2" stroke="currentColor" />
+    </Icon>
+  )
+}
+
+/** Delivery: a scooter. */
+export function ScooterIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="6" cy="18" r="2.5" stroke="currentColor" />
+      <circle cx="17" cy="18" r="2.5" stroke="currentColor" />
+      <path d="M6 18h6l1.5-6H17" stroke="currentColor" />
+      <path d="M12 12l2-5h3" stroke="currentColor" />
+      <path d="M8 7h3" stroke="currentColor" />
+    </Icon>
+  )
+}

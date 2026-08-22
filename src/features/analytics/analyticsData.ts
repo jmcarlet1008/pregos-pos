@@ -8,51 +8,22 @@ import type {
   PaymentMethod,
   User,
 } from '../../db'
+import { csvCell, downloadCsv } from '../../lib/csv'
+import {
+  addDays,
+  endOfDay,
+  filterOrdersInRange,
+  fromDateInputValue,
+  orderTimestamp,
+  startOfDay,
+  toDateInputValue,
+} from '../../lib/dateRange'
 import { netOfVat, seniorPwdDiscountAmount, seniorPwdDiscountedPrice } from '../../lib/discount'
 
-export function startOfDay(d: Date): Date {
-  const r = new Date(d)
-  r.setHours(0, 0, 0, 0)
-  return r
-}
-
-export function endOfDay(d: Date): Date {
-  const r = new Date(d)
-  r.setHours(23, 59, 59, 999)
-  return r
-}
-
-export function addDays(d: Date, days: number): Date {
-  const r = new Date(d)
-  r.setDate(r.getDate() + days)
-  return r
-}
-
-export function toDateInputValue(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-export function fromDateInputValue(value: string): Date {
-  const [y, m, d] = value.split('-').map(Number)
-  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1)
-}
-
-/** Completed orders record `completed_at` once and never overwrite it, unlike `updated_at` — this is the sale timestamp. */
-export function orderTimestamp(order: Order): string {
-  return order.completed_at ?? order.updated_at
-}
-
-export function filterOrdersInRange(orders: Order[], start: Date, end: Date): Order[] {
-  const startMs = start.getTime()
-  const endMs = end.getTime()
-  return orders.filter((o) => {
-    const t = new Date(orderTimestamp(o)).getTime()
-    return t >= startMs && t <= endMs
-  })
-}
+// Date-range and CSV helpers below live in src/lib (dateRange.ts/csv.ts) so other
+// features — e.g. register/orderHistoryData.ts — can reuse them without a cross-feature
+// import; re-exported here unchanged so existing imports from this module keep working.
+export { addDays, downloadCsv, endOfDay, filterOrdersInRange, fromDateInputValue, orderTimestamp, startOfDay, toDateInputValue }
 
 export interface RangeStats {
   grossSales: number
@@ -482,10 +453,6 @@ export function computeBirBreakdown(
   return computeLinesBirFigures(relevantLines, discountTypeById)
 }
 
-function csvCell(value: string): string {
-  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
-}
-
 const PAYMENT_LABEL: Record<PaymentMethod, string> = { cash: 'Cash', gcash: 'GCash' }
 
 export function buildOrdersCsv(
@@ -627,16 +594,4 @@ export function buildDetailedSalesCsv(
   })
 
   return [header, ...rows].map((row) => row.map(csvCell).join(',')).join('\n')
-}
-
-export function downloadCsv(filename: string, csv: string): void {
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
 }

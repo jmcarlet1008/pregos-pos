@@ -16,6 +16,8 @@ import { ROUTES } from './routes'
 // own `realtime-order` chunk, excluded from the PWA offline precache — see the
 // manualChunks/navigateFallbackDenylist comments in vite.config.ts.
 const OrderPage = lazy(() => import('./features/order/OrderPage').then((m) => ({ default: m.OrderPage })))
+// Same rationale as OrderPage above — its own `realtime-kitchen` chunk.
+const KitchenPage = lazy(() => import('./features/kitchen/KitchenPage').then((m) => ({ default: m.KitchenPage })))
 
 const router = createBrowserRouter([
   { path: ROUTES.login, element: <LoginPage /> },
@@ -26,6 +28,18 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={null}>
         <OrderPage />
+      </Suspense>
+    ),
+  },
+  // Public, shared-station screen — deliberately a top-level sibling here too, not
+  // nested under RequireAuth/AppShell: no Manager PIN gating (shared kitchen station
+  // device, per the request), and AppShell's TopBar/Sidebar assume an authenticated
+  // `user` that never exists on this route.
+  {
+    path: ROUTES.kitchen,
+    element: (
+      <Suspense fallback={null}>
+        <KitchenPage />
       </Suspense>
     ),
   },

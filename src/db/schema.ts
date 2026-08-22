@@ -76,6 +76,44 @@ export type OrderChannel = 'in_store' | 'online'
 export type FulfillmentType = 'pickup' | 'delivery'
 
 /**
+ * Central kitchen-workflow lifecycle (Prompt 12), shared by /kitchen and the /fulfillment
+ * hand-off screen built next — see src/lib/orderWorkflow.ts for all derived logic
+ * (initial-status decisions, urgency, sort order) over this field, so both screens (and
+ * Order Management, which can also cancel from most states) agree on one definition:
+ *
+ *   new -> (pending_confirmation, only for manual-confirmation delivery zones) ->
+ *   preparing -> ready -> then branches by fulfillment kind:
+ *     walk-in (dine-in):  ready -> served
+ *     pickup:             ready -> picked_up
+ *     delivery:            ready -> out_for_delivery -> delivered
+ *
+ * 'cancelled' can happen from most states but is only ever written by Order Management
+ * (a future prompt) — it's included here now so that prompt needs no further migration.
+ */
+export type KitchenStatus =
+  | 'new'
+  | 'pending_confirmation'
+  | 'preparing'
+  | 'ready'
+  | 'served'
+  | 'picked_up'
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'cancelled'
+
+export const KITCHEN_STATUSES: readonly KitchenStatus[] = [
+  'new',
+  'pending_confirmation',
+  'preparing',
+  'ready',
+  'served',
+  'picked_up',
+  'out_for_delivery',
+  'delivered',
+  'cancelled',
+] as const
+
+/**
  * A structured address for an `auto_route` delivery zone (see DeliveryZone), typed by
  * a customer at checkout on /order. `type: 'freeform'` is used instead for a
  * manual-confirmation zone, where staff work out the exact address/logistics with the
@@ -114,6 +152,16 @@ export interface Order extends BaseEntity {
   // null means "use BusinessSettings.average_prep_time_minutes"; set this when a
   // specific order is bigger/more complex than average and needs more lead time.
   prep_time_override_minutes: number | null
+  // ---- Kitchen workflow (see supabase/migrations/20260822000000_add_kitchen_status.sql
+  // and src/lib/orderWorkflow.ts, which owns all derived logic over these two fields) ----
+  kitchen_status: KitchenStatus
+  // null = sort by computed start-by time (see orderWorkflow.ts's computeSortEpoch).
+  // Non-null = a staff member dragged this order out of computed order on /kitchen (or
+  // set it directly from Order Management) — the numeric value is an opaque sort key
+  // (not a real timestamp), and its mere presence is also what drives the "Manually
+  // prioritized" tag. Never renumbered in bulk: only the one order actually moved ever
+  // gets written, so the tag never cascades to untouched siblings.
+  queue_priority: number | null
   // ---- Online ordering (see supabase/migrations/20260821010000_add_online_order_fields.sql) ----
   channel: OrderChannel
   fulfillment_type: FulfillmentType | null // null for in-store orders

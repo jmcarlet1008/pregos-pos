@@ -1,18 +1,24 @@
 import {
-  BUSINESS_SETTINGS_ID,
-  type BusinessSettings,
   type Category,
   type DeliveryAddress,
   type FulfillmentType,
   type ModifierGroup,
   type ModifierOption,
-  type PaymentMethod,
   type Product,
+  type PaymentMethod,
 } from '../../db'
+// Moved to src/lib/businessSettingsRemote.ts so src/features/kitchen/ (a second
+// direct-Supabase consumer) can import them without reaching across the order/kitchen
+// feature-folder boundary. Imported (not just re-exported) since assertStillAccepting
+// below also calls fetchBusinessSettings itself; re-exported so OrderPage.tsx's existing
+// imports don't need to change.
+import { fetchBusinessSettings, subscribeBusinessSettings } from '../../lib/businessSettingsRemote'
+import { getInitialKitchenStatus } from '../../lib/orderWorkflow'
 import { supabase } from '../../lib/supabaseClient'
-import { withDeliveryDefaults } from '../settings/businessData'
 import { evaluateOpenState } from './businessHours'
 import { cartLineTotal, cartTotal, type CartLine } from './cartTypes'
+
+export { fetchBusinessSettings, subscribeBusinessSettings }
 
 function id() {
   return crypto.randomUUID()
@@ -56,44 +62,21 @@ export async function fetchMenu(): Promise<OnlineMenu> {
   return { categories, products, modifierGroups, modifierOptions }
 }
 
-/**
- * `business_settings` has no `sync_status` column server-side (it's a local-only Dexie
- * concept — see schema.ts) — bolt on a placeholder so the row satisfies the shared
- * BusinessSettings type, same trick pull.ts uses when reading a remote row into Dexie.
- */
-function toBusinessSettings(row: object): BusinessSettings {
-  return withDeliveryDefaults({ ...row, sync_status: 'synced' } as BusinessSettings)
-}
-
-export async function fetchBusinessSettings(): Promise<BusinessSettings> {
-  const { data, error } = await supabase.from('business_settings').select('*').eq('id', BUSINESS_SETTINGS_ID).single()
-  if (error) throw new Error(`Failed to load business settings: ${error.message}`)
-  return toBusinessSettings(data)
-}
-
-/**
- * Realtime: reacts instantly if staff flip Accepting Orders or edit the delivery
- * window while a customer already has /order open, instead of waiting on any poll.
- * Returns an unsubscribe function for a useEffect cleanup.
- */
-export function subscribeBusinessSettings(onChange: (settings: BusinessSettings) => void): () => void {
-  const channel = supabase
-    .channel('public:business_settings')
-    .on(
-      'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'business_settings', filter: `id=eq.${BUSINESS_SETTINGS_ID}` },
-      (payload) => onChange(toBusinessSettings(payload.new)),
-    )
-    .subscribe()
-
-  return () => {
-    void supabase.removeChannel(channel)
-  }
-}
-
 export type Fulfillment =
   | { type: 'pickup' }
-  | { type: 'delivery'; zoneName: string; address: DeliveryAddress; lat: number | null; lng: number | null }
+  | {
+      type: 'delivery'
+      zoneName: string
+      // The chosen zone's DeliveryZone.auto_route snapshot at order time — determines
+      // whether this order auto-queues into 'preparing' or waits at
+      // 'pending_confirmation' (see getInitialKitchenStatus below). Previously dropped
+      // between DeliveryZoneStep and here (see OrderPage.tsx's handleZoneConfirm);
+      // threading it through is what makes that routing decision possible at all.
+      zoneAutoRoute: boolean
+      address: DeliveryAddress
+      lat: number | null
+      lng: number | null
+    }
 
 export type PaymentInput = { method: 'cash'; tendered: number } | { method: 'gcash'; confirmed: true }
 
@@ -132,6 +115,11 @@ export async function submitOnlineOrder(input: SubmitOrderInput): Promise<string
   const total = cartTotal(input.lines)
   const fulfillmentType: FulfillmentType = input.fulfillment.type
   const paymentMethod: PaymentMethod = input.payment.method
+  const kitchenStatus = getInitialKitchenStatus({
+    channel: 'online',
+    fulfillmentType,
+    zoneAutoRoute: input.fulfillment.type === 'delivery' ? input.fulfillment.zoneAutoRoute : null,
+  })
 
   const { error: orderError } = await supabase.from('orders').insert({
     id: orderId,
@@ -142,6 +130,8 @@ export async function submitOnlineOrder(input: SubmitOrderInput): Promise<string
     user_id: null,
     completed_at: null,
     prep_time_override_minutes: null,
+    kitchen_status: kitchenStatus,
+    queue_priority: null,
     channel: 'online',
     fulfillment_type: fulfillmentType,
     delivery_zone: input.fulfillment.type === 'delivery' ? input.fulfillment.zoneName : null,

@@ -28,6 +28,7 @@ import {
 } from './registerData'
 import { completeOrder } from './checkoutData'
 import { addOrderDiscount } from './discountData'
+import { runSyncCycle } from '../../sync/syncEngine'
 import { SeniorPwdDiscountModal } from './SeniorPwdDiscountModal'
 import { vibrate } from '../../lib/haptics'
 
@@ -215,6 +216,11 @@ export function RegisterPage() {
     setSubmittingPayment(true)
     try {
       await completeOrder(currentOrderId, input, user?.id ?? null)
+      // Nudges the order (now kitchen_status: 'preparing') to Supabase right away —
+      // /kitchen reads Supabase directly and would otherwise wait up to the 30s sync
+      // interval, missing "the moment payment completes." Fire-and-forget: runSyncCycle
+      // already no-ops safely offline/unconfigured and coalesces overlapping calls.
+      void runSyncCycle()
       vibrate('success')
       sessionStorage.removeItem(STORAGE_KEY)
       setCompletedOrderId(currentOrderId)

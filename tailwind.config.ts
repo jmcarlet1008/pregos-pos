@@ -38,6 +38,19 @@ export default {
         'on-error': '#ffffff',
         'error-container': '#ffdad6',
         'on-error-container': '#93000a',
+        // Urgency color-coding (Kitchen View, Prompt 12) is functional, not decorative —
+        // 🔴 urgent reuses `error` above; these two pairs cover 🟢 ok and 🟡 soon, named
+        // to match the existing X/on-X/X-container convention. Not used for anything
+        // else (e.g. fulfillment-kind chips deliberately stay off this axis — see
+        // KitchenOrderCard.tsx — so urgency color always means only one thing).
+        success: '#2f7d4f',
+        'on-success': '#ffffff',
+        'success-container': '#e6f3ea',
+        'on-success-container': '#0d3d21',
+        warning: '#8a5a00',
+        'on-warning': '#ffffff',
+        'warning-container': '#fdf3d9',
+        'on-warning-container': '#4a3200',
         'primary-fixed': '#ffdad4',
         'primary-fixed-dim': '#ffb4a8',
         'on-primary-fixed': '#410000',
