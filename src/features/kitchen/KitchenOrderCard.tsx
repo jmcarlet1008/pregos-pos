@@ -4,6 +4,7 @@ import { formatCurrency } from '../../lib/currency'
 import {
   formatDeliveryAddress,
   formatPhase,
+  FULFILLMENT_LABEL,
   getEffectivePrepMinutes,
   getFulfillmentKind,
   getStartByDate,
@@ -11,12 +12,6 @@ import {
   type FulfillmentKind,
   type Urgency,
 } from '../../lib/orderWorkflow'
-
-const FULFILLMENT_LABEL: Record<FulfillmentKind, string> = {
-  'walk-in': 'Walk-in',
-  pickup: 'Pickup',
-  delivery: 'Delivery',
-}
 
 const FULFILLMENT_ICON: Record<FulfillmentKind, typeof WalkInIcon> = {
   'walk-in': WalkInIcon,
@@ -179,6 +174,15 @@ export function KitchenOrderCard({
             {manuallyPrioritized && (
               <span className="rounded bg-primary-container px-xs py-[2px] text-label-sm font-bold text-on-primary-container">
                 Manually prioritized
+              </span>
+            )}
+            {order.items_edited_at != null && (
+              // Set by Order Management's "Edit Items" action, cleared by markReady() —
+              // see kitchenSupabaseData.ts. useKitchenQueue's onOrderEdited already
+              // chimed once when this first appeared; the badge is what lets staff see
+              // *what* changed without having to remember the chime.
+              <span className="rounded bg-warning-container px-xs py-[2px] text-label-sm font-bold text-on-warning-container">
+                🔄 Updated{order.items_edit_note ? `: ${order.items_edit_note}` : ''}
               </span>
             )}
           </div>

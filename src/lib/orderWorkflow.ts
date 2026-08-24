@@ -19,6 +19,33 @@ import {
 
 export type FulfillmentKind = 'walk-in' | 'pickup' | 'delivery'
 
+/** Customer-facing labels for FulfillmentKind — shared by Kitchen/Fulfillment cards and Analytics. */
+export const FULFILLMENT_LABEL: Record<FulfillmentKind, string> = {
+  'walk-in': 'Walk-in',
+  pickup: 'Pickup',
+  delivery: 'Delivery',
+}
+
+/** Customer-facing labels for OrderChannel — Analytics filter/breakdown/CSV. */
+export const CHANNEL_LABEL: Record<OrderChannel, string> = {
+  in_store: 'Dine-in',
+  online: 'Online',
+  phone: 'Phone',
+}
+
+/** Staff-facing labels for KitchenStatus — Order Management's order list/filters. */
+export const KITCHEN_STATUS_LABEL: Record<KitchenStatus, string> = {
+  new: 'New',
+  pending_confirmation: 'Pending Confirmation',
+  preparing: 'Preparing',
+  ready: 'Ready',
+  served: 'Served',
+  picked_up: 'Picked Up',
+  out_for_delivery: 'Out for Delivery',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+}
+
 /** 🟡 "soon" starts this many minutes before start-by time; past/now is always 🔴 urgent. */
 export const SOON_THRESHOLD_MINUTES = 20
 
@@ -102,6 +129,35 @@ export function computeSortEpoch(order: OrderForSort, settings: SettingsForPrep 
   if (getFulfillmentKind(order) === 'walk-in') return new Date(order.created_at).getTime()
   const startBy = getStartByDate(order, settings)
   return startBy ? startBy.getTime() : new Date(order.created_at).getTime()
+}
+
+type OrderForDrop = OrderForSort & Pick<Order, 'id'>
+
+/**
+ * Computes a new manual queue_priority for the one card that moved, as the midpoint
+ * between its new neighbors' effective sort keys — touching only that card, so
+ * "Manually prioritized" never cascades to siblings. Generic over any `{order}` bundle
+ * shape (KitchenOrderBundle, OrderManagementBundle, ...) so /kitchen and Order
+ * Management call the literal same function rather than two copies that could drift —
+ * a reorder on either screen must produce the identical write.
+ */
+export function computeDroppedPriority<B extends { order: OrderForDrop }>(
+  group: B[],
+  orderedIds: string[],
+  activeId: string,
+  settings: SettingsForPrep | null | undefined,
+): number {
+  const byId = new Map(group.map((b) => [b.order.id, b.order]))
+  const newIndex = orderedIds.indexOf(activeId)
+  const beforeOrder = newIndex > 0 ? byId.get(orderedIds[newIndex - 1]) : undefined
+  const afterOrder = newIndex < orderedIds.length - 1 ? byId.get(orderedIds[newIndex + 1]) : undefined
+  const beforeKey = beforeOrder ? computeSortEpoch(beforeOrder, settings) : null
+  const afterKey = afterOrder ? computeSortEpoch(afterOrder, settings) : null
+
+  if (beforeKey != null && afterKey != null) return (beforeKey + afterKey) / 2
+  if (beforeKey != null) return beforeKey + 60_000
+  if (afterKey != null) return afterKey - 60_000
+  return Date.now()
 }
 
 /** `phase` is a free-text Input (DeliveryZoneStep.tsx), not a number field — a customer

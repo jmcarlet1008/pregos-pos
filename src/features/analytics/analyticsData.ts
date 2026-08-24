@@ -1,6 +1,7 @@
 import type {
   DiscountType,
   Order,
+  OrderChannel,
   OrderDiscount,
   OrderLine,
   OrderLineModifier,
@@ -19,6 +20,7 @@ import {
   toDateInputValue,
 } from '../../lib/dateRange'
 import { netOfVat, seniorPwdDiscountAmount, seniorPwdDiscountedPrice } from '../../lib/discount'
+import { CHANNEL_LABEL, FULFILLMENT_LABEL, getFulfillmentKind, type FulfillmentKind } from '../../lib/orderWorkflow'
 
 // Date-range and CSV helpers below live in src/lib (dateRange.ts/csv.ts) so other
 // features — e.g. register/orderHistoryData.ts — can reuse them without a cross-feature
@@ -378,6 +380,62 @@ export function computePaymentSplit(orders: Order[], payments: Payment[]): Payme
   return split
 }
 
+export type ChannelFilter = 'all' | OrderChannel
+export type FulfillmentFilter = 'all' | FulfillmentKind
+
+/** Narrows orders by channel and/or fulfillment kind — 'all' on either axis is a no-op
+ *  for that axis; the two are independently AND-combinable (e.g. Online + Delivery). */
+export function filterByChannelAndFulfillment(
+  orders: Order[],
+  channelFilter: ChannelFilter,
+  fulfillmentFilter: FulfillmentFilter,
+): Order[] {
+  return orders.filter((o) => {
+    if (channelFilter !== 'all' && o.channel !== channelFilter) return false
+    if (fulfillmentFilter !== 'all' && getFulfillmentKind(o) !== fulfillmentFilter) return false
+    return true
+  })
+}
+
+export interface ChannelSplit {
+  in_store: { amount: number; count: number }
+  online: { amount: number; count: number }
+  phone: { amount: number; count: number }
+}
+
+export interface FulfillmentSplit {
+  'walk-in': { amount: number; count: number }
+  pickup: { amount: number; count: number }
+  delivery: { amount: number; count: number }
+}
+
+export interface ChannelFulfillmentBreakdown {
+  channel: ChannelSplit
+  fulfillment: FulfillmentSplit
+}
+
+/** Channel/fulfillment breakdown of the given orders — same accumulate-per-bucket shape
+ *  as computePaymentSplit above. Combined total isn't duplicated here: callers reuse the
+ *  already-existing computeStats(orders) on the same order set for that. */
+export function computeChannelFulfillmentBreakdown(orders: Order[]): ChannelFulfillmentBreakdown {
+  const breakdown: ChannelFulfillmentBreakdown = {
+    channel: { in_store: { amount: 0, count: 0 }, online: { amount: 0, count: 0 }, phone: { amount: 0, count: 0 } },
+    fulfillment: {
+      'walk-in': { amount: 0, count: 0 },
+      pickup: { amount: 0, count: 0 },
+      delivery: { amount: 0, count: 0 },
+    },
+  }
+  for (const o of orders) {
+    breakdown.channel[o.channel].amount += o.total
+    breakdown.channel[o.channel].count += 1
+    const kind = getFulfillmentKind(o)
+    breakdown.fulfillment[kind].amount += o.total
+    breakdown.fulfillment[kind].count += 1
+  }
+  return breakdown
+}
+
 /** Reporting-only estimate of the VAT already baked into VAT-inclusive prices — never shown at checkout, see plan.md. */
 export function vatPortion(total: number): number {
   return (total * 12) / 112
@@ -477,6 +535,8 @@ export function buildOrdersCsv(
     'Date',
     'Time',
     'Cashier',
+    'Channel',
+    'Fulfillment',
     'Payment Method',
     'Total',
     'VAT Portion (ref. only)',
@@ -501,6 +561,8 @@ export function buildOrdersCsv(
         ts.toLocaleDateString('en-PH'),
         ts.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }),
         cashier?.name ?? '—',
+        CHANNEL_LABEL[o.channel],
+        FULFILLMENT_LABEL[getFulfillmentKind(o)],
         payment ? PAYMENT_LABEL[payment.method] : '—',
         o.total.toFixed(2),
         vatPortion(o.total).toFixed(2),
@@ -545,6 +607,8 @@ export function buildDetailedSalesCsv(
     'Date',
     'Time',
     'Cashier',
+    'Channel',
+    'Fulfillment',
     'Product',
     'Modifiers',
     'Qty',
@@ -581,6 +645,8 @@ export function buildDetailedSalesCsv(
       ts.toLocaleDateString('en-PH'),
       ts.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }),
       cashier?.name ?? '—',
+      CHANNEL_LABEL[order.channel],
+      FULFILLMENT_LABEL[getFulfillmentKind(order)],
       line.product_name,
       lineModifiers.map((m) => m.name).join('; '),
       String(line.quantity),

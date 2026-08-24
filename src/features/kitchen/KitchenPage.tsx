@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { SortableList } from '../../components/ui'
 import type { BusinessSettings } from '../../db'
 import { fetchBusinessSettings, subscribeBusinessSettings } from '../../lib/businessSettingsRemote'
-import { computeSortEpoch, getFulfillmentKind } from '../../lib/orderWorkflow'
+import { computeDroppedPriority, computeSortEpoch, getFulfillmentKind } from '../../lib/orderWorkflow'
 import { isSupabaseConfigured } from '../../lib/supabaseClient'
 import { KitchenOrderCard } from './KitchenOrderCard'
 import {
@@ -48,28 +48,6 @@ function KitchenHeader({ connectionStatus }: { connectionStatus: 'connecting' | 
   )
 }
 
-/** Computes a new manual queue_priority for the one card that moved, as the midpoint
- *  between its new neighbors' effective sort keys — touching only that card, so
- *  "Manually prioritized" never cascades to siblings. */
-function computeDroppedPriority(
-  group: KitchenOrderBundle[],
-  orderedIds: string[],
-  activeId: string,
-  settings: BusinessSettings,
-): number {
-  const byId = new Map(group.map((b) => [b.order.id, b.order]))
-  const newIndex = orderedIds.indexOf(activeId)
-  const beforeOrder = newIndex > 0 ? byId.get(orderedIds[newIndex - 1]) : undefined
-  const afterOrder = newIndex < orderedIds.length - 1 ? byId.get(orderedIds[newIndex + 1]) : undefined
-  const beforeKey = beforeOrder ? computeSortEpoch(beforeOrder, settings) : null
-  const afterKey = afterOrder ? computeSortEpoch(afterOrder, settings) : null
-
-  if (beforeKey != null && afterKey != null) return (beforeKey + afterKey) / 2
-  if (beforeKey != null) return beforeKey + 60_000
-  if (afterKey != null) return afterKey - 60_000
-  return Date.now()
-}
-
 /**
  * Real-time kitchen order queue — see docs/plans (Prompt 12). Top-level, unauthenticated,
  * direct-Supabase route (no Manager PIN gating: shared kitchen station device), modeled
@@ -82,15 +60,22 @@ export function KitchenPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const now = useClock(30_000)
   const audio = useKitchenAudioAlert()
-  const { bundles, connectionStatus, patchQueuePriority } = useKitchenQueue((order) => {
-    // Only chime for an order that's actually workable right now — a pending-
-    // confirmation order already chimed when it first arrived; this only fires again
-    // if it somehow re-enters the active set as a distinct arrival (it doesn't in
-    // normal use, since confirming it is an in-place UPDATE the hook treats as "already
-    // known" — see kitchenSupabaseData.ts's ingestOrder).
-    void order
-    audio.playChime()
-  })
+  const { bundles, connectionStatus, patchQueuePriority } = useKitchenQueue(
+    (order) => {
+      // Only chime for an order that's actually workable right now — a pending-
+      // confirmation order already chimed when it first arrived; this only fires again
+      // if it somehow re-enters the active set as a distinct arrival (it doesn't in
+      // normal use, since confirming it is an in-place UPDATE the hook treats as "already
+      // known" — see kitchenSupabaseData.ts's ingestOrder).
+      void order
+      audio.playChime()
+    },
+    () => {
+      // An already-visible order's items changed (Order Management's "Edit Items") —
+      // same chime as a brand-new arrival, since this needs the same kind of attention.
+      audio.playChime()
+    },
+  )
 
   useEffect(() => {
     if (!isSupabaseConfigured) return

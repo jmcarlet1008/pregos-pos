@@ -6,6 +6,7 @@ import {
   CloseIcon,
   InventoryIcon,
   MenuEditorIcon,
+  OrderManagementIcon,
   RegisterIcon,
   SettingsIcon,
   SupportIcon,
@@ -21,6 +22,7 @@ interface NavItem {
 
 const primaryNav: NavItem[] = [
   { to: ROUTES.register, label: 'Register', icon: RegisterIcon },
+  { to: ROUTES.orderManagement, label: 'Order Management', icon: OrderManagementIcon, managerOnly: true },
   { to: ROUTES.inventory, label: 'Inventory', icon: InventoryIcon, managerOnly: true },
   { to: ROUTES.menu, label: 'Menu Editor', icon: MenuEditorIcon, managerOnly: true },
   { to: ROUTES.analytics, label: 'Analytics', icon: AnalyticsIcon, managerOnly: true },

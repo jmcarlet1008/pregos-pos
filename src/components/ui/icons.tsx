@@ -53,6 +53,17 @@ export function AnalyticsIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function OrderManagementIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="5" y="4" width="14" height="17" rx="2" stroke="currentColor" />
+      <path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1Z" stroke="currentColor" />
+      <path d="M8.5 12.5l1.5 1.5 3-3" stroke="currentColor" />
+      <path d="M8 17h6" stroke="currentColor" />
+    </Icon>
+  )
+}
+
 export function SettingsIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

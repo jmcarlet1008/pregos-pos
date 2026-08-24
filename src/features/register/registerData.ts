@@ -57,6 +57,9 @@ export async function createOrder(): Promise<string> {
     gcash_customer_confirmed: null,
     customer_name: null,
     customer_contact: null,
+    cancellation_reason: null,
+    items_edited_at: null,
+    items_edit_note: null,
     sync_status: 'pending',
     ...timestamps(),
   }

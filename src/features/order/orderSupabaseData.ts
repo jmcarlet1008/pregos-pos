@@ -4,6 +4,7 @@ import {
   type FulfillmentType,
   type ModifierGroup,
   type ModifierOption,
+  type Order,
   type Product,
   type PaymentMethod,
 } from '../../db'
@@ -13,6 +14,11 @@ import {
 // below also calls fetchBusinessSettings itself; re-exported so OrderPage.tsx's existing
 // imports don't need to change.
 import { fetchBusinessSettings, subscribeBusinessSettings } from '../../lib/businessSettingsRemote'
+// Same cross-feature-folder reuse orderManagementSupabaseData.ts already does for this
+// function, rather than a second copy — see assignOrderNumberIfMissing's own doc
+// comment (kitchenSupabaseData.ts) for why this needs the safe compare-and-swap
+// approach and not a naive client-side "local max+1".
+import { assignOrderNumberIfMissing } from '../kitchen/kitchenSupabaseData'
 import { getInitialKitchenStatus } from '../../lib/orderWorkflow'
 import { supabase } from '../../lib/supabaseClient'
 import { evaluateOpenState } from './businessHours'
@@ -97,18 +103,27 @@ async function assertStillAccepting(): Promise<void> {
   }
 }
 
+export interface SubmitOrderResult {
+  orderId: string
+  /** null only if the post-submission numbering round-trip itself failed — the order
+   *  was still placed successfully either way. See this function's own comment. */
+  orderNumber: number | null
+}
+
 /**
  * Writes an online order straight to Supabase: one `orders` row, its `order_lines`
- * (each carrying its own `remarks`), any `order_line_modifiers`, and one `payments`
- * row (status 'pending' — cash is COD and GCash proof isn't verified until staff check
- * Messenger, so neither is "confirmed" yet the way an in-person Register sale is).
+ * (each carrying its own `remarks`), any `order_line_modifiers`, one `payments` row
+ * (status 'pending' — cash is COD and GCash proof isn't verified until staff check
+ * Messenger, so neither is "confirmed" yet the way an in-person Register sale is), and
+ * finally a real order_number (see assignOrderNumberIfMissing) so OrderConfirmation.tsx
+ * can show the customer the same number staff will see on /kitchen, not a placeholder.
  *
  * Plain sequential REST calls, not one DB transaction — there are no FK constraints in
  * this schema by design (see the note at the top of 20260722000000_init_schema.sql),
  * and the app already tolerates partial sync state elsewhere. A failure partway
  * through leaves at worst a harmless empty/partial `active` order, not corrupted data.
  */
-export async function submitOnlineOrder(input: SubmitOrderInput): Promise<string> {
+export async function submitOnlineOrder(input: SubmitOrderInput): Promise<SubmitOrderResult> {
   await assertStillAccepting()
 
   const orderId = id()
@@ -144,6 +159,9 @@ export async function submitOnlineOrder(input: SubmitOrderInput): Promise<string
     gcash_customer_confirmed: input.payment.method === 'gcash' ? true : null,
     customer_name: input.customerName.trim(),
     customer_contact: input.customerContact.trim(),
+    cancellation_reason: null,
+    items_edited_at: null,
+    items_edit_note: null,
   })
   if (orderError) throw new Error(`Failed to place your order: ${orderError.message}`)
 
@@ -191,5 +209,18 @@ export async function submitOnlineOrder(input: SubmitOrderInput): Promise<string
   })
   if (paymentError) throw new Error(`Your order was placed, but recording payment failed: ${paymentError.message}`)
 
-  return orderId
+  // Assigned last, on purpose: the order/lines/modifiers/payment are all already
+  // committed by this point, so if this one extra round-trip fails for any reason, the
+  // order itself is still intact — OrderConfirmation.tsx just falls back to a
+  // reference code derived from orderId instead of a real number. Minimal-shape cast:
+  // assignOrderNumberIfMissing only ever reads .id/.order_number off what's passed in.
+  let orderNumber: number | null = null
+  try {
+    const numbered = await assignOrderNumberIfMissing({ id: orderId, order_number: null } as Order)
+    orderNumber = numbered.order_number
+  } catch (err) {
+    console.error('Failed to assign an order number — the order itself still went through', err)
+  }
+
+  return { orderId, orderNumber }
 }

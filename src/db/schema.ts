@@ -70,8 +70,9 @@ export interface ModifierOption extends BaseEntity, SoftDeletable {
 
 export type OrderStatus = 'active' | 'completed' | 'voided'
 
-/** Where an order originated: the in-store Register, or the public /order page. */
-export type OrderChannel = 'in_store' | 'online'
+/** Where an order originated: the in-store Register, the public /order page, or a
+ *  manually-entered phone/manual order taken from Order Management. */
+export type OrderChannel = 'in_store' | 'online' | 'phone'
 
 export type FulfillmentType = 'pickup' | 'delivery'
 
@@ -88,7 +89,7 @@ export type FulfillmentType = 'pickup' | 'delivery'
  *     delivery:            ready -> out_for_delivery -> delivered
  *
  * 'cancelled' can happen from most states but is only ever written by Order Management
- * (a future prompt) — it's included here now so that prompt needs no further migration.
+ * (src/features/orderManagement/orderManagementSupabaseData.ts's cancelOrder).
  */
 export type KitchenStatus =
   | 'new'
@@ -175,6 +176,16 @@ export interface Order extends BaseEntity {
   gcash_customer_confirmed: boolean | null // set when payment_method === 'gcash'
   customer_name: string | null
   customer_contact: string | null
+  // ---- Order Management (see supabase/migrations/20260823000000_order_management.sql) ----
+  cancellation_reason: string | null // set by cancelOrder() when Order Management cancels an order
+  // ---- Order Management: edit items in-queue (see
+  // supabase/migrations/20260823010000_order_item_edit_flag.sql) — both null while
+  // untouched; set together by applyOrderItemEdit(), cleared together by markReady().
+  // items_edited_at is a version marker (compared, not displayed) that tells /kitchen's
+  // and Order Management's live queues when to refetch an order's lines — see the
+  // migration's comment for why updated_at can't be reused for this.
+  items_edited_at: string | null
+  items_edit_note: string | null // human-readable summary, e.g. "+1 item, -1 item, 1 modified"
 }
 
 export interface OrderLine extends BaseEntity {

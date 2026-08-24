@@ -40,8 +40,15 @@ export type KitchenConnectionStatus = 'connecting' | 'live' | 'reconnecting'
  * null)` guard makes the update a no-op if another concurrent assignment already won;
  * the existing unique index (orders_order_number_unique_idx, NULLs distinct) is the
  * final backstop, same accepted-risk shape as Register's today.
+ *
+ * Exported so orderManagementSupabaseData.ts's queue can call this too — a manager may
+ * well look at Order Management before any kitchen station has ever loaded a given
+ * order, and that screen needs real numbers just as much as /kitchen does. Also called
+ * directly from orderSupabaseData.ts's submitOnlineOrder, as its very last step, so the
+ * customer's confirmation screen can show the same real number staff will see, instead
+ * of waiting for /kitchen to assign one on first load.
  */
-async function assignOrderNumberIfMissing(order: Order): Promise<Order> {
+export async function assignOrderNumberIfMissing(order: Order): Promise<Order> {
   if (order.order_number != null) return order
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -111,12 +118,22 @@ async function fetchLinesForOrder(
  * evaluated against each event's *new* row, so an UPDATE moving an order OUT of scope
  * (preparing -> ready) wouldn't match and the card would never be told to disappear —
  * all in/out-of-scope decisions happen client-side here instead.
+ *
+ * `onOrderEdited` fires when an already-visible order's `items_edited_at` changes to a
+ * non-null value distinct from what this hook last saw — i.e. Order Management's "Edit
+ * Items" action touched it (see EditOrderItemsFlow.tsx/applyOrderItemEdit) — but not on
+ * the clear-at-Ready transition (items_edited_at going back to null carries nothing new
+ * to alert on). Lines/modifiers are otherwise treated as immutable post-creation
+ * (fetched once); this is the one case where that assumption doesn't hold, so it's the
+ * one case that triggers a refetch of them.
  */
-export function useKitchenQueue(onNewOrder?: (order: Order) => void) {
+export function useKitchenQueue(onNewOrder?: (order: Order) => void, onOrderEdited?: (order: Order) => void) {
   const [bundles, setBundles] = useState<Map<string, KitchenOrderBundle>>(new Map())
   const [connectionStatus, setConnectionStatus] = useState<KitchenConnectionStatus>('connecting')
   const onNewOrderRef = useRef(onNewOrder)
   onNewOrderRef.current = onNewOrder
+  const onOrderEditedRef = useRef(onOrderEdited)
+  onOrderEditedRef.current = onOrderEdited
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
@@ -124,14 +141,21 @@ export function useKitchenQueue(onNewOrder?: (order: Order) => void) {
     let cancelled = false
     // Ids currently believed to hold a full bundle (order + lines/modifiers) in state —
     // doubles as "have we already alerted for this id" and "do we still need to fetch
-    // its lines" (lines never change post-creation, so they're fetched at most once).
+    // its lines" (lines are otherwise immutable post-creation, so normally fetched at
+    // most once — see editedAtByOrderId below for the one exception).
     const knownActiveIds = new Set<string>()
+    // Last-seen items_edited_at per known order, tracked outside React state so
+    // ingestOrder can decide *before* calling setState whether this update actually
+    // changed the items (and needs a lines refetch + onOrderEdited alert) or is just an
+    // unrelated field patch (queue_priority drag, prep_time_override, ...).
+    const editedAtByOrderId = new Map<string, string | null>()
     let firstLoadDone = false
 
     async function ingestOrder(rawOrder: Order) {
       if (cancelled) return
 
       if (!isActive(rawOrder.kitchen_status)) {
+        editedAtByOrderId.delete(rawOrder.id)
         if (knownActiveIds.delete(rawOrder.id)) {
           setBundles((prev) => {
             if (!prev.has(rawOrder.id)) return prev
@@ -148,7 +172,27 @@ export function useKitchenQueue(onNewOrder?: (order: Order) => void) {
       if (cancelled) return
 
       if (alreadyKnown) {
-        // Item/modifier lists are immutable post-creation — just patch the order fields.
+        const previousEditedAt = editedAtByOrderId.get(order.id) ?? null
+        const itemsChanged = order.items_edited_at !== previousEditedAt
+        editedAtByOrderId.set(order.id, order.items_edited_at)
+
+        if (itemsChanged) {
+          const { lines, modifiersByLineId } = await fetchLinesForOrder(order.id)
+          if (cancelled) return
+          setBundles((prev) => {
+            const existing = prev.get(order.id)
+            if (!existing) return prev
+            const next = new Map(prev)
+            next.set(order.id, { order, lines, modifiersByLineId })
+            return next
+          })
+          // Only alert for a genuine edit landing, not the clear-at-Ready transition
+          // (items_edited_at going back to null on markReady).
+          if (order.items_edited_at != null) onOrderEditedRef.current?.(order)
+          return
+        }
+
+        // Nothing about the items changed — just patch the order fields.
         setBundles((prev) => {
           const existing = prev.get(order.id)
           if (!existing) return prev
@@ -162,6 +206,7 @@ export function useKitchenQueue(onNewOrder?: (order: Order) => void) {
       const { lines, modifiersByLineId } = await fetchLinesForOrder(order.id)
       if (cancelled) return
       knownActiveIds.add(order.id)
+      editedAtByOrderId.set(order.id, order.items_edited_at)
       setBundles((prev) => {
         const next = new Map(prev)
         next.set(order.id, { order, lines, modifiersByLineId })
@@ -235,7 +280,13 @@ export function useKitchenQueue(onNewOrder?: (order: Order) => void) {
 // same reasoning (root-caused together, 2026-08-22).
 
 export async function markReady(orderId: string): Promise<void> {
-  const { error } = await supabase.from('orders').update({ kitchen_status: 'ready', updated_at: nowIso() }).eq('id', orderId)
+  // Clears items_edited_at/items_edit_note along with the status transition — Ready is
+  // the point past which Order Management's "Edit Items" no longer applies, so any
+  // "this order changed" flag has served its purpose (see EditOrderItemsFlow.tsx).
+  const { error } = await supabase
+    .from('orders')
+    .update({ kitchen_status: 'ready', items_edited_at: null, items_edit_note: null, updated_at: nowIso() })
+    .eq('id', orderId)
   if (error) throw new Error(`Failed to mark order ready: ${error.message}`)
 }
 

@@ -6,6 +6,7 @@ import {
   buildDetailedSalesCsv,
   buildOrdersCsv,
   computeBirBreakdown,
+  computeChannelFulfillmentBreakdown,
   computeDailyProfit,
   computeHourlyBuckets,
   computeItemProfit,
@@ -17,13 +18,18 @@ import {
   computeWeeklyBuckets,
   downloadCsv,
   endOfDay,
+  filterByChannelAndFulfillment,
   filterOrdersInRange,
   startOfDay,
   toDateInputValue,
   vatPortion,
+  type ChannelFilter,
   type ChartMode,
+  type FulfillmentFilter,
 } from './analyticsData'
 import { BirBreakdownPanel } from './BirBreakdownPanel'
+import { ChannelFulfillmentBreakdownPanel } from './ChannelFulfillmentBreakdownPanel'
+import { ChannelFulfillmentFilter } from './ChannelFulfillmentFilter'
 import { DateRangeFilter, type DatePreset } from './DateRangeFilter'
 import { HourlySalesChart } from './HourlySalesChart'
 import { ItemProfitList } from './ItemProfitList'
@@ -58,6 +64,8 @@ export function AnalyticsPage() {
   const [preset, setPreset] = useState<DatePreset>('today')
   const [rangeStart, setRangeStart] = useState<Date>(() => startOfDay(now))
   const [rangeEnd, setRangeEnd] = useState<Date>(() => endOfDay(now))
+  const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all')
+  const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentFilter>('all')
 
   function applyPreset(next: DatePreset) {
     setPreset(next)
@@ -77,12 +85,14 @@ export function AnalyticsPage() {
   const kpiData = computeKpiData(orders, now)
   const chartData = chartMode === 'today' ? computeHourlyBuckets(orders, now) : computeWeeklyBuckets(orders, now)
 
-  const filteredOrders = filterOrdersInRange(orders, rangeStart, rangeEnd)
+  const categoryFilteredOrders = filterByChannelAndFulfillment(orders, channelFilter, fulfillmentFilter)
+  const filteredOrders = filterOrdersInRange(categoryFilteredOrders, rangeStart, rangeEnd)
   const filteredOrderIds = new Set(filteredOrders.map((o) => o.id))
   const filteredStats = computeStats(filteredOrders)
   const topItems = computeTopItems(filteredOrderIds, orderLines)
   const paymentSplit = computePaymentSplit(filteredOrders, payments)
   const birBreakdown = computeBirBreakdown(filteredOrders, orderLines, orderDiscounts)
+  const channelFulfillmentBreakdown = computeChannelFulfillmentBreakdown(filteredOrders)
   const profitSummary = computeProfitSummary(
     filteredOrders,
     orderLines,
@@ -91,7 +101,7 @@ export function AnalyticsPage() {
     modifierOptionCostById,
   )
   const dailyProfit = computeDailyProfit(
-    orders,
+    categoryFilteredOrders,
     orderLines,
     orderLineModifiers,
     productCostById,
@@ -172,12 +182,21 @@ export function AnalyticsPage() {
         exportDetailedDisabled={filteredOrders.length === 0}
       />
 
+      <ChannelFulfillmentFilter
+        channel={channelFilter}
+        fulfillment={fulfillmentFilter}
+        onChannelChange={setChannelFilter}
+        onFulfillmentChange={setFulfillmentFilter}
+      />
+
       {view === 'overview' && (
         <>
           <div className="grid grid-cols-1 gap-md @2xl:grid-cols-2">
             <TopItemsList items={topItems} />
             <PaymentSplitPanel split={paymentSplit} vat={vatPortion(filteredStats.grossSales)} />
           </div>
+
+          <ChannelFulfillmentBreakdownPanel breakdown={channelFulfillmentBreakdown} totals={filteredStats} />
 
           <BirBreakdownPanel data={birBreakdown} />
         </>

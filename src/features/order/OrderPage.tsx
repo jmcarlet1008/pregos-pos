@@ -76,6 +76,15 @@ export function OrderPage() {
   const [payment, setPayment] = useState<PaymentInput | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  // Snapshot of what actually got submitted, for OrderConfirmation — orderId/orderNumber
+  // don't exist anywhere else in state, and customerName/customerContact are otherwise
+  // only ever passed as handleSubmit's own function args and dropped.
+  const [submittedOrder, setSubmittedOrder] = useState<{
+    orderId: string
+    orderNumber: number | null
+    customerName: string
+    customerContact: string
+  } | null>(null)
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
@@ -171,7 +180,7 @@ export function OrderPage() {
     setSubmitting(true)
     setSubmitError(null)
     try {
-      await submitOnlineOrder({
+      const { orderId, orderNumber } = await submitOnlineOrder({
         lines: cart,
         fulfillment,
         requestedTimeIso: slotToIso(slot, now),
@@ -179,6 +188,7 @@ export function OrderPage() {
         customerName: name,
         customerContact: contact,
       })
+      setSubmittedOrder({ orderId, orderNumber, customerName: name, customerContact: contact })
       setScreen('confirmation')
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Something went wrong placing your order. Please try again.')
@@ -194,6 +204,7 @@ export function OrderPage() {
     setSlot(null)
     setPayment(null)
     setSubmitError(null)
+    setSubmittedOrder(null)
     setScreen('menu')
   }
 
@@ -289,7 +300,21 @@ export function OrderPage() {
         />
       )}
 
-      {screen === 'confirmation' && <OrderConfirmation onNewOrder={handleNewOrder} />}
+      {screen === 'confirmation' && fulfillment && slot && payment && submittedOrder && (
+        <OrderConfirmation
+          orderId={submittedOrder.orderId}
+          orderNumber={submittedOrder.orderNumber}
+          lines={cart}
+          modifierGroups={menu.modifierGroups}
+          fulfillment={fulfillment}
+          slot={slot}
+          payment={payment}
+          customerName={submittedOrder.customerName}
+          customerContact={submittedOrder.customerContact}
+          businessName={settings.name || "Prego's Cucina"}
+          onNewOrder={handleNewOrder}
+        />
+      )}
 
       <CartSheet
         open={cartSheetOpen}
