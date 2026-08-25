@@ -1,6 +1,6 @@
 import { Suspense, lazy } from 'react'
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom'
-import { UpdateBanner } from './components/ui'
+import { RouteErrorBoundary, UpdateBanner } from './components/ui'
 import { AppShell } from './layout/AppShell'
 import { RegisterPage } from './features/register/RegisterPage'
 import { OrderManagementPage } from './features/orderManagement/OrderManagementPage'
@@ -24,8 +24,14 @@ const FulfillmentPage = lazy(() =>
   import('./features/fulfillment/FulfillmentPage').then((m) => ({ default: m.FulfillmentPage })),
 )
 
+// Every top-level entry below carries its own `errorElement`: react-router only
+// bubbles an uncaught render error up to the nearest ancestor route that declares one,
+// and these are all separate top-level siblings (no shared parent route to hang a
+// single errorElement off of) — so each needs it individually to keep a crash on any
+// one of them from falling through to Router's raw, developer-facing default screen.
+// See RouteErrorBoundary.tsx for why this matters in practice (stale-PWA-cache crashes).
 const router = createBrowserRouter([
-  { path: ROUTES.login, element: <LoginPage /> },
+  { path: ROUTES.login, element: <LoginPage />, errorElement: <RouteErrorBoundary /> },
   // Public, customer-facing — deliberately a top-level sibling here, not nested under
   // RequireAuth/AppShell below, so it never touches the staff PIN gate.
   {
@@ -35,6 +41,7 @@ const router = createBrowserRouter([
         <OrderPage />
       </Suspense>
     ),
+    errorElement: <RouteErrorBoundary />,
   },
   // Public, shared-station screen — deliberately a top-level sibling here too, not
   // nested under RequireAuth/AppShell: no Manager PIN gating (shared kitchen station
@@ -47,6 +54,7 @@ const router = createBrowserRouter([
         <KitchenPage />
       </Suspense>
     ),
+    errorElement: <RouteErrorBoundary />,
   },
   // Public, shared-station screen — same rationale as /kitchen immediately above: no
   // Manager PIN gating (shared front-counter/dispatch station device), top-level
@@ -58,6 +66,7 @@ const router = createBrowserRouter([
         <FulfillmentPage />
       </Suspense>
     ),
+    errorElement: <RouteErrorBoundary />,
   },
   {
     element: (
@@ -65,6 +74,9 @@ const router = createBrowserRouter([
         <AppShell />
       </RequireAuth>
     ),
+    // Covers every authenticated child below too — none of them declare their own,
+    // so a crash in any authenticated page bubbles up to this one.
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <Navigate to={ROUTES.register} replace /> },
       { path: ROUTES.register, element: <RegisterPage /> },
