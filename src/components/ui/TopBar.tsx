@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSyncStatus } from '../../sync/useSyncStatus'
 import { MenuIcon, WifiIcon, WifiOffIcon } from './icons'
+import { Modal } from './Modal'
 
 export interface TopBarProps {
   stationName?: string
@@ -27,6 +28,8 @@ export function TopBar({
   const now = useClock()
   const sync = useSyncStatus()
   const time = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  const [showError, setShowError] = useState(false)
+  const hasError = sync.status === 'error' && Boolean(sync.lastError)
 
   return (
     <header className="flex min-h-touch items-center justify-between border-b border-surface-dim bg-surface-container-lowest px-md py-sm">
@@ -45,16 +48,19 @@ export function TopBar({
       </div>
 
       <div className="flex items-center gap-md">
-        <div
+        <button
+          type="button"
+          disabled={!hasError}
+          onClick={() => setShowError(true)}
+          title={sync.lastError ?? undefined}
           className={[
             'flex items-center gap-xs text-label-bold',
             !sync.online || sync.status === 'error' ? 'text-error' : 'text-on-surface-variant',
           ].join(' ')}
-          title={sync.lastError ?? undefined}
         >
           {sync.online ? <WifiIcon width={18} height={18} /> : <WifiOffIcon width={18} height={18} />}
           <span>{sync.label}</span>
-        </div>
+        </button>
 
         <span className="text-body-md tabular-nums text-on-surface">{time}</span>
 
@@ -72,6 +78,10 @@ export function TopBar({
           </button>
         )}
       </div>
+
+      <Modal open={showError} onClose={() => setShowError(false)} title="Sync Error Detail">
+        <p className="whitespace-pre-wrap break-words text-body-md text-on-surface">{sync.lastError}</p>
+      </Modal>
     </header>
   )
 }
