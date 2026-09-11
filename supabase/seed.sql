@@ -31,9 +31,12 @@ insert into business_settings (
 on conflict (id) do nothing;
 
 -- ---------- Users (POS staff PIN logins) ----------
-insert into users (id, name, pin, role, active) values
-  ('00000000-0000-4000-8000-000000000001', 'Maria Santos', '1234', 'cashier', true),
-  ('00000000-0000-4000-8000-000000000002', 'Chef Prego', '9999', 'manager', true)
+-- pin_hash values are sha256('1234')/sha256('9999') hex-encoded, matching
+-- src/lib/pinHash.ts client-side (see 20260911000000_add_pin_hash.sql for why
+-- unsalted sha256 is the right call for a 4-digit PIN).
+insert into users (id, name, pin_hash, role, active) values
+  ('00000000-0000-4000-8000-000000000001', 'Maria Santos', '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4', 'cashier', true),
+  ('00000000-0000-4000-8000-000000000002', 'Chef Prego', '888df25ae35772424a560c7152a1de794440e0ea5cfee62828333a456a506e05', 'manager', true)
 on conflict (id) do nothing;
 
 -- ---------- Categories ----------

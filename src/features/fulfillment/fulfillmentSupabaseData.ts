@@ -175,21 +175,41 @@ export function useFulfillmentQueue(): {
 // comment) — overwriting it here would shift a sale's recorded time later than when it
 // actually happened.
 
+/**
+ * markServed/markPickedUp/markDelivered all move kitchen_status to a value outside
+ * anon_select_active's visible set (see supabase/migrations/*_device_auth_rls.sql) —
+ * exactly the point of those states, so the card disappears from this screen. A plain
+ * `.update()` can't do that: Postgres additionally requires the *resulting* row to
+ * satisfy the table's SELECT policy for UPDATE, regardless of the UPDATE policy's own
+ * WITH CHECK (confirmed directly against Postgres — see
+ * supabase/migrations/20260911040000_fulfillment_complete_rpc.sql's comment for the
+ * full story). These three call a SECURITY DEFINER RPC instead, which validates the
+ * transition server-side and bypasses that limitation for exactly this narrow case.
+ * markOutForDelivery doesn't need this — 'out_for_delivery' stays inside the visible
+ * set, so a plain update works fine there.
+ */
+async function completeOrderFulfillment(orderId: string, newKitchenStatus: 'served' | 'picked_up' | 'delivered') {
+  const { error } = await supabase.rpc('complete_order_fulfillment', {
+    p_order_id: orderId,
+    p_new_kitchen_status: newKitchenStatus,
+  })
+  if (error) throw error
+}
+
 export async function markServed(orderId: string): Promise<void> {
-  const { error } = await supabase
-    .from('orders')
-    .update({ kitchen_status: 'served', updated_at: nowIso() })
-    .eq('id', orderId)
-  if (error) throw new Error(`Failed to mark order served: ${error.message}`)
+  try {
+    await completeOrderFulfillment(orderId, 'served')
+  } catch (error) {
+    throw new Error(`Failed to mark order served: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }
 
 export async function markPickedUp(orderId: string): Promise<void> {
-  const now = nowIso()
-  const { error } = await supabase
-    .from('orders')
-    .update({ kitchen_status: 'picked_up', status: 'completed', completed_at: now, updated_at: now })
-    .eq('id', orderId)
-  if (error) throw new Error(`Failed to mark order picked up: ${error.message}`)
+  try {
+    await completeOrderFulfillment(orderId, 'picked_up')
+  } catch (error) {
+    throw new Error(`Failed to mark order picked up: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }
 
 export async function markOutForDelivery(orderId: string): Promise<void> {
@@ -201,10 +221,9 @@ export async function markOutForDelivery(orderId: string): Promise<void> {
 }
 
 export async function markDelivered(orderId: string): Promise<void> {
-  const now = nowIso()
-  const { error } = await supabase
-    .from('orders')
-    .update({ kitchen_status: 'delivered', status: 'completed', completed_at: now, updated_at: now })
-    .eq('id', orderId)
-  if (error) throw new Error(`Failed to mark order delivered: ${error.message}`)
+  try {
+    await completeOrderFulfillment(orderId, 'delivered')
+  } catch (error) {
+    throw new Error(`Failed to mark order delivered: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }
