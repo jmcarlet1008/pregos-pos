@@ -242,11 +242,6 @@ export type UserRole = 'cashier' | 'manager'
 
 export interface User extends BaseEntity {
   name: string
-  // Plaintext PIN — retained as optional only through the v5 -> v6 transition (see the
-  // version(6) upgrade below and src/lib/pinHash.ts). Nothing should write this field
-  // anymore; login/create/reset all use pin_hash. Dropped once every device and the
-  // Supabase `users.pin` column have moved off it (see supabase/migrations/*_add_pin_hash.sql).
-  pin?: string
   pin_hash: string
   role: UserRole
   active: boolean
@@ -506,9 +501,13 @@ class PregosDB extends Dexie {
         imageCache: 'url, cached_at',
       })
       .upgrade(async (tx) => {
+        // Legacy shape at this version still carries `pin` — that field is gone from
+        // the current User type (removed in v7 below), so this upgrade function alone
+        // types the row with it added back rather than reaching for `any`.
+        type LegacyUser = User & { pin?: string }
         // .modify()'s callback runs synchronously in Dexie — it can't await a hash
         // computation per-row — so hash everything up front, then bulkPut the results.
-        const table = tx.table<User, string>('users')
+        const table = tx.table<LegacyUser, string>('users')
         const users = await table.toArray()
         const withHashes = await Promise.all(
           users.map(async (user) =>
@@ -516,6 +515,40 @@ class PregosDB extends Dexie {
           ),
         )
         await table.bulkPut(withHashes)
+      })
+
+    // v7 removes the leftover plaintext `pin` field entirely, now that pin_hash-based
+    // login (v6) has been confirmed working — see supabase/migrations/*_drop_plaintext_
+    // pin.sql for the matching Postgres column drop. Purely a local cleanup: pin was
+    // already unused by every code path after v6, this just stops it from lingering
+    // visible in DevTools/IndexedDB on devices that synced before v6 shipped. .stores()
+    // is unchanged from v6 (no index change), so this bump exists solely to run the
+    // upgrade callback below — see the v5 comment above for why an unchanged index
+    // string still needs its own version() bump to carry an upgrade function.
+    this.version(7)
+      .stores({
+        categories: 'id, sort_order, active, sync_status',
+        products: 'id, category_id, active, sort_order, sync_status',
+        modifierGroups: 'id, product_id, sort_order, sync_status',
+        modifierOptions: 'id, modifier_group_id, sort_order, sync_status',
+        orders: 'id, order_number, status, shift_id, sync_status',
+        orderLines: 'id, order_id, product_id, order_discount_id, sync_status',
+        orderLineModifiers: 'id, order_line_id, modifier_option_id, sync_status',
+        orderDiscounts: 'id, order_id, sync_status',
+        payments: 'id, order_id, method, status, sync_status',
+        users: 'id, pin_hash, role, active, sync_status',
+        shifts: 'id, user_id, status, sync_status',
+        stockAdjustments: 'id, product_id, order_id, reason, sync_status',
+        businessSettings: 'id, sync_status',
+        syncMeta: 'id',
+        imageCache: 'url, cached_at',
+      })
+      .upgrade(async (tx) => {
+        type LegacyUser = User & { pin?: string }
+        const table = tx.table<LegacyUser, string>('users')
+        const users = await table.toArray()
+        const cleaned = users.map(({ pin: _pin, ...rest }) => rest)
+        await table.bulkPut(cleaned)
       })
   }
 }

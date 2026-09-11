@@ -69,10 +69,7 @@ export async function resetUserPin(userId: string, newPin: string): Promise<void
   if (await isPinTaken(newPin, userId)) throw new Error('That PIN is already in use by another user.')
   const user = await db.users.get(userId)
   if (!user) return
-  // Drop any lingering plaintext `pin` from before the pin_hash migration (schema.ts
-  // v6) — new/reset PINs should never write plaintext again.
-  const { pin: _plaintext, ...rest } = user
-  await db.users.put(touch({ ...rest, pin_hash: await hashPin(newPin) }))
+  await db.users.put(touch({ ...user, pin_hash: await hashPin(newPin) }))
 }
 
 /** Activates/deactivates a user. Throws if deactivating would remove the last active Manager. */
