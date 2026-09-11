@@ -188,19 +188,32 @@ export function useFulfillmentQueue(): {
  * markOutForDelivery doesn't need this — 'out_for_delivery' stays inside the visible
  * set, so a plain update works fine there.
  */
+/**
+ * supabase-js's PostgrestError (what `.rpc()`/`.update()` etc. resolve `error` to) is a
+ * plain object, not an `Error` instance — `error instanceof Error` is always false for
+ * it, so a naive `error instanceof Error ? error.message : String(error)` falls through
+ * to `String(error)` and produces the unhelpful literal text "[object Object]" instead
+ * of the actual message. Check for a `.message` property structurally instead.
+ */
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object' && 'message' in error) return String((error as { message: unknown }).message)
+  return String(error)
+}
+
 async function completeOrderFulfillment(orderId: string, newKitchenStatus: 'served' | 'picked_up' | 'delivered') {
   const { error } = await supabase.rpc('complete_order_fulfillment', {
     p_order_id: orderId,
     p_new_kitchen_status: newKitchenStatus,
   })
-  if (error) throw error
+  if (error) throw new Error(errorMessage(error))
 }
 
 export async function markServed(orderId: string): Promise<void> {
   try {
     await completeOrderFulfillment(orderId, 'served')
   } catch (error) {
-    throw new Error(`Failed to mark order served: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`Failed to mark order served: ${errorMessage(error)}`)
   }
 }
 
@@ -208,7 +221,7 @@ export async function markPickedUp(orderId: string): Promise<void> {
   try {
     await completeOrderFulfillment(orderId, 'picked_up')
   } catch (error) {
-    throw new Error(`Failed to mark order picked up: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`Failed to mark order picked up: ${errorMessage(error)}`)
   }
 }
 
@@ -217,13 +230,13 @@ export async function markOutForDelivery(orderId: string): Promise<void> {
     .from('orders')
     .update({ kitchen_status: 'out_for_delivery', updated_at: nowIso() })
     .eq('id', orderId)
-  if (error) throw new Error(`Failed to mark order out for delivery: ${error.message}`)
+  if (error) throw new Error(`Failed to mark order out for delivery: ${errorMessage(error)}`)
 }
 
 export async function markDelivered(orderId: string): Promise<void> {
   try {
     await completeOrderFulfillment(orderId, 'delivered')
   } catch (error) {
-    throw new Error(`Failed to mark order delivered: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`Failed to mark order delivered: ${errorMessage(error)}`)
   }
 }
