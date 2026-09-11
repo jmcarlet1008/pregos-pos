@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { KitchenStatus, Order, OrderLine, OrderLineModifier } from '../../db'
 import { nowIso } from '../../db'
 import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient'
@@ -67,13 +67,35 @@ async function fetchLinesForOrder(
  * an order OUT of scope (ready -> served/picked_up, out_for_delivery -> delivered)
  * wouldn't match and the card would never be told to disappear — all in/out-of-scope
  * decisions happen client-side here instead.
+ *
+ * That reasoning has a real gap now, though: Supabase Realtime enforces RLS on
+ * postgres_changes for anon the same way PostgREST does (confirmed directly — an anon
+ * subscriber receives zero event at all for an UPDATE whose *resulting* row no longer
+ * satisfies anon_select_active, not even a filtered/degraded one). served/picked_up/
+ * delivered are exactly the values anon_select_active excludes, so the "unfiltered
+ * subscription, client-side isInScope check" design above can never actually fire for
+ * those three — the card only disappeared here before because a completed order was
+ * still just as readable as an active one. Until the next full page load re-fetches
+ * (which is what "just needs a refresh" looked like), the card sits stale.
+ * completeOrderFulfillment's 3 callers below compensate by removing their own card
+ * immediately on success instead of waiting for an event that will never arrive.
  */
 export function useFulfillmentQueue(): {
   bundles: Map<string, FulfillmentOrderBundle>
   connectionStatus: FulfillmentConnectionStatus
+  removeOrder: (orderId: string) => void
 } {
   const [bundles, setBundles] = useState<Map<string, FulfillmentOrderBundle>>(new Map())
   const [connectionStatus, setConnectionStatus] = useState<FulfillmentConnectionStatus>('connecting')
+
+  const removeOrder = useCallback((orderId: string) => {
+    setBundles((prev) => {
+      if (!prev.has(orderId)) return prev
+      const next = new Map(prev)
+      next.delete(orderId)
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
@@ -152,7 +174,7 @@ export function useFulfillmentQueue(): {
     }
   }, [])
 
-  return { bundles, connectionStatus }
+  return { bundles, connectionStatus, removeOrder }
 }
 
 // Every mutation below sets updated_at explicitly: the `orders` table has no
