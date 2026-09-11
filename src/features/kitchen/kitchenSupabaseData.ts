@@ -51,27 +51,17 @@ export type KitchenConnectionStatus = 'connecting' | 'live' | 'reconnecting'
 export async function assignOrderNumberIfMissing(order: Order): Promise<Order> {
   if (order.order_number != null) return order
 
+  // Computing "next number" client-side (a plain select-max) can no longer see the
+  // true max: anon is now scoped to only currently-active orders (see
+  // supabase/migrations/*_device_auth_rls.sql), so a query run as anon would compute
+  // "next" against a small, wrong subset and collide with real historical numbers it
+  // can't see. assign_order_number_if_missing (SECURITY DEFINER) computes the true max
+  // internally instead — see that migration's comment for the full story.
   for (let attempt = 0; attempt < 3; attempt++) {
-    const { data: maxRow } = await supabase
-      .from('orders')
-      .select('order_number')
-      .not('order_number', 'is', null)
-      .order('order_number', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    const next = (maxRow?.order_number ?? 0) + 1
-
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ order_number: next })
-      .eq('id', order.id)
-      .is('order_number', null)
-      .select()
-      .single()
-    if (!error && data) return data as Order
-    // Either a genuine conflict (another writer claimed `next` first) or another
-    // writer already numbered this exact order (the .is() guard matched 0 rows) —
-    // either way, retry with a fresh max.
+    const { data, error } = await supabase.rpc('assign_order_number_if_missing', { p_order_id: order.id })
+    if (!error && data != null) return { ...order, order_number: data as number }
+    // A genuine conflict (another writer claimed the same number first, or already
+    // numbered this exact order between our check and update) — retry with a fresh max.
   }
 
   // Gave up after 3 attempts — re-fetch and return whatever's there now (most likely
