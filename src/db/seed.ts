@@ -15,6 +15,7 @@ import {
   type Product,
   type User,
 } from './schema'
+import { hashPin } from '../lib/pinHash'
 
 /**
  * Fixed ids for every seeded row. Seeding must be idempotent across devices: if two
@@ -67,8 +68,8 @@ async function seedUsers() {
     if (existing > 0) return
 
     const users: User[] = [
-      { id: SEED_IDS.userMaria, name: 'Maria Santos', pin: '1234', role: 'cashier', active: true, sync_status: 'pending', ...timestamps() },
-      { id: SEED_IDS.userChef, name: 'Chef Prego', pin: '9999', role: 'manager', active: true, sync_status: 'pending', ...timestamps() },
+      { id: SEED_IDS.userMaria, name: 'Maria Santos', pin_hash: await hashPin('1234'), role: 'cashier', active: true, sync_status: 'pending', ...timestamps() },
+      { id: SEED_IDS.userChef, name: 'Chef Prego', pin_hash: await hashPin('9999'), role: 'manager', active: true, sync_status: 'pending', ...timestamps() },
     ]
     await db.users.bulkAdd(users)
   })

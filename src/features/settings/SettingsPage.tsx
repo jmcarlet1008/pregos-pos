@@ -3,6 +3,7 @@ import { BackupRestoreSection } from './BackupRestoreSection'
 import { BusinessInfoSection } from './BusinessInfoSection'
 import { CloudBackupRestoreSection } from './CloudBackupRestoreSection'
 import { DeliveryPaymentSection } from './DeliveryPaymentSection'
+import { DeviceAuthSection } from './DeviceAuthSection'
 import { ForceResyncSection } from './ForceResyncSection'
 import { UsersSection } from './UsersSection'
 import { InstallGuideSection } from './InstallGuideSection'
@@ -15,6 +16,7 @@ export function SettingsPage() {
       <BusinessInfoSection />
       <DeliveryPaymentSection />
       <UsersSection />
+      <DeviceAuthSection />
       <BackupRestoreSection />
       <CloudBackupRestoreSection />
       <ForceResyncSection />
