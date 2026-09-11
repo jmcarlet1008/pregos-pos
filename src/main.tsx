@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import { App } from './App'
 import { db, seedDatabase } from './db'
+import { isPublicStationRoute } from './lib/deviceRoute'
 import { isSupabaseConfigured } from './lib/supabaseClient'
 import { pullChanges } from './sync/pull'
 import { startSyncEngine } from './sync/syncEngine'
@@ -23,6 +24,20 @@ if (import.meta.env.DEV) {
  * check see the real state instead of an empty new-device database.
  */
 async function boot() {
+  // Dynamic import (not a static top-of-file one): this keeps deviceAuth.ts — and any
+  // credential a manager has signed in with — out of the bundle that /order, /kitchen,
+  // and /fulfillment visitors download, since this branch never runs for those routes.
+  // See lib/deviceAuth.ts's doc comment. Failure here must never block local
+  // Dexie/offline PIN login, so it's fire-and-forget, same as the pull below.
+  if (isSupabaseConfigured) {
+    try {
+      const { ensureDeviceSession } = await import('./lib/deviceAuth')
+      await ensureDeviceSession()
+    } catch (err) {
+      console.error('Device session check failed, continuing in local/offline mode', err)
+    }
+  }
+
   if (isSupabaseConfigured) {
     try {
       await pullChanges(null)
@@ -41,8 +56,7 @@ async function boot() {
 // Supabase directly instead (see src/features/order/orderSupabaseData.ts,
 // src/features/kitchen/kitchenSupabaseData.ts, and
 // src/features/fulfillment/fulfillmentSupabaseData.ts). Every other route keeps today's boot.
-const path = window.location.pathname
-if (!path.startsWith('/order') && !path.startsWith('/kitchen') && !path.startsWith('/fulfillment')) {
+if (!isPublicStationRoute(window.location.pathname)) {
   void boot().catch((err) => {
     console.error('Failed to initialize database', err)
   })

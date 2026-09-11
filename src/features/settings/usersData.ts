@@ -1,4 +1,5 @@
 import { db, timestamps, touch, type User, type UserRole } from '../../db'
+import { hashPin } from '../../lib/pinHash'
 
 function id() {
   return crypto.randomUUID()
@@ -9,7 +10,8 @@ function isValidPin(pin: string): boolean {
 }
 
 async function isPinTaken(pin: string, excludeUserId?: string): Promise<boolean> {
-  const existing = await db.users.where({ pin }).first()
+  const pin_hash = await hashPin(pin)
+  const existing = await db.users.where({ pin_hash }).first()
   return Boolean(existing && existing.id !== excludeUserId)
 }
 
@@ -34,7 +36,7 @@ export async function createUser(input: NewUserInput): Promise<string> {
   const user: User = {
     id: id(),
     name,
-    pin: input.pin,
+    pin_hash: await hashPin(input.pin),
     role: input.role,
     active: true,
     sync_status: 'pending',
@@ -67,7 +69,10 @@ export async function resetUserPin(userId: string, newPin: string): Promise<void
   if (await isPinTaken(newPin, userId)) throw new Error('That PIN is already in use by another user.')
   const user = await db.users.get(userId)
   if (!user) return
-  await db.users.put(touch({ ...user, pin: newPin }))
+  // Drop any lingering plaintext `pin` from before the pin_hash migration (schema.ts
+  // v6) — new/reset PINs should never write plaintext again.
+  const { pin: _plaintext, ...rest } = user
+  await db.users.put(touch({ ...rest, pin_hash: await hashPin(newPin) }))
 }
 
 /** Activates/deactivates a user. Throws if deactivating would remove the last active Manager. */

@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import { hashPin } from '../lib/pinHash'
 
 export type SyncStatus = 'pending' | 'synced' | 'conflict'
 
@@ -241,7 +242,12 @@ export type UserRole = 'cashier' | 'manager'
 
 export interface User extends BaseEntity {
   name: string
-  pin: string
+  // Plaintext PIN — retained as optional only through the v5 -> v6 transition (see the
+  // version(6) upgrade below and src/lib/pinHash.ts). Nothing should write this field
+  // anymore; login/create/reset all use pin_hash. Dropped once every device and the
+  // Supabase `users.pin` column have moved off it (see supabase/migrations/*_add_pin_hash.sql).
+  pin?: string
+  pin_hash: string
   role: UserRole
   active: boolean
 }
@@ -473,6 +479,44 @@ class PregosDB extends Dexie {
       syncMeta: 'id',
       imageCache: 'url, cached_at',
     })
+
+    // v6 replaces the plaintext `pin` index with `pin_hash` (see src/lib/pinHash.ts —
+    // unsalted SHA-256, chosen so login stays a plain indexed lookup for offline use).
+    // The upgrade callback computes pin_hash from each device's own local `pin` field,
+    // so every device self-heals on its next load with zero network dependency — it
+    // does not wait on a sync pull. `pin` itself is left in place (now optional) rather
+    // than stripped here; it's dropped only once the Supabase `users.pin` column is
+    // dropped too (see supabase/migrations/*_add_pin_hash.sql for that sequencing).
+    this.version(6)
+      .stores({
+        categories: 'id, sort_order, active, sync_status',
+        products: 'id, category_id, active, sort_order, sync_status',
+        modifierGroups: 'id, product_id, sort_order, sync_status',
+        modifierOptions: 'id, modifier_group_id, sort_order, sync_status',
+        orders: 'id, order_number, status, shift_id, sync_status',
+        orderLines: 'id, order_id, product_id, order_discount_id, sync_status',
+        orderLineModifiers: 'id, order_line_id, modifier_option_id, sync_status',
+        orderDiscounts: 'id, order_id, sync_status',
+        payments: 'id, order_id, method, status, sync_status',
+        users: 'id, pin_hash, role, active, sync_status',
+        shifts: 'id, user_id, status, sync_status',
+        stockAdjustments: 'id, product_id, order_id, reason, sync_status',
+        businessSettings: 'id, sync_status',
+        syncMeta: 'id',
+        imageCache: 'url, cached_at',
+      })
+      .upgrade(async (tx) => {
+        // .modify()'s callback runs synchronously in Dexie — it can't await a hash
+        // computation per-row — so hash everything up front, then bulkPut the results.
+        const table = tx.table<User, string>('users')
+        const users = await table.toArray()
+        const withHashes = await Promise.all(
+          users.map(async (user) =>
+            !user.pin_hash && user.pin ? { ...user, pin_hash: await hashPin(user.pin) } : user,
+          ),
+        )
+        await table.bulkPut(withHashes)
+      })
   }
 }
 

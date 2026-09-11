@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { db, type UserRole } from '../../db'
+import { hashPin } from '../../lib/pinHash'
 
 export interface AuthUser {
   id: string
@@ -63,7 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function loginWithPin(pin: string, options?: { requireRole?: UserRole }) {
-    const record = await db.users.where({ pin }).first()
+    const pin_hash = await hashPin(pin)
+    const record = await db.users.where({ pin_hash }).first()
     if (!record || !record.active) {
       return { ok: false as const, error: 'PIN not recognized.' }
     }
