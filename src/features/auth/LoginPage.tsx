@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Button, PinPad } from '../../components/ui'
 import { useAuth } from './AuthContext'
+import { DeviceSetupScreen } from './DeviceSetupScreen'
+import { getDeviceAuthStatus, onDeviceAuthChange, type DeviceAuthStatus } from '../../lib/deviceAuth'
+import { isSupabaseConfigured } from '../../lib/supabaseClient'
 
 export function LoginPage() {
   const { user, loginWithPin, logout } = useAuth()
@@ -10,8 +13,22 @@ export function LoginPage() {
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // null = still checking; only ever act on a definitive "not connected" answer, so a
+  // brief loading window never flashes the setup screen for an already-connected device.
+  const [deviceStatus, setDeviceStatus] = useState<DeviceAuthStatus | null>(null)
+
+  useEffect(() => {
+    getDeviceAuthStatus().then(setDeviceStatus)
+    return onDeviceAuthChange(setDeviceStatus)
+  }, [])
 
   const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/register'
+
+  // See DeviceSetupScreen.tsx's doc comment for why this has to happen before PIN
+  // login can work at all on a never-connected device.
+  if (isSupabaseConfigured && deviceStatus && !deviceStatus.connected) {
+    return <DeviceSetupScreen />
+  }
 
   async function submit(requireRole?: 'manager') {
     if (pin.length !== 4 || submitting) return

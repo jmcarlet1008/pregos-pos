@@ -16,6 +16,7 @@ import {
   type User,
 } from './schema'
 import { hashPin } from '../lib/pinHash'
+import { isSupabaseConfigured } from '../lib/supabaseClient'
 
 /**
  * Fixed ids for every seeded row. Seeding must be idempotent across devices: if two
@@ -54,6 +55,18 @@ function timestamps() {
 /**
  * Seeds sample staff PINs on first run. No-op if users already exist.
  *
+ * Only runs when Supabase isn't configured at all (pure local dev with no backend —
+ * `.env.local` unset). On any real deployment, `users` is now scoped to the
+ * authenticated device session (see supabase/migrations/*_device_auth_rls.sql) — an
+ * empty local `users` table on a real device means "hasn't connected yet" almost every
+ * time, not "genuinely no staff exist," and fabricating a demo Maria Santos/Chef Prego
+ * login (PINs 1234/9999, hardcoded in this file) would let anyone who opens the app on
+ * an unconnected device log in as a fake local-only staff member. See
+ * DeviceSetupScreen.tsx for the real answer to an unconnected device: connect it, don't
+ * seed around the problem. (Its writes would go nowhere anyway, since a never-connected
+ * device can't push to `users`/`shifts` either — but the fake login itself is the part
+ * worth not offering.)
+ *
  * The count-check and the insert run inside one 'rw' transaction so the two steps are
  * atomic. IndexedDB serializes readwrite transactions with overlapping object-store
  * scope across every connection to the database (including other tabs/dev-server
@@ -63,6 +76,8 @@ function timestamps() {
  * has written, and both then try to insert — this is what caused the duplicate rows.
  */
 async function seedUsers() {
+  if (isSupabaseConfigured) return
+
   await db.transaction('rw', db.users, async () => {
     const existing = await db.users.count()
     if (existing > 0) return
