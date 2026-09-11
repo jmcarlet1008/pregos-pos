@@ -115,7 +115,7 @@ function ColumnSection({ label, bundles, variant, actionLabel, actionColor, onAc
  */
 export function FulfillmentPage() {
   const [actionError, setActionError] = useState<string | null>(null)
-  const { bundles, connectionStatus } = useFulfillmentQueue()
+  const { bundles, connectionStatus, removeOrder } = useFulfillmentQueue()
 
   const bundleList = useMemo(() => Array.from(bundles.values()), [bundles])
 
@@ -148,10 +148,20 @@ export function FulfillmentPage() {
     [bundleList],
   )
 
-  async function runAction(action: () => Promise<void>) {
+  /**
+   * `removesFromView` — served/picked_up/delivered move an order to a kitchen_status
+   * this page can no longer see under RLS, and Realtime enforces that same RLS for its
+   * postgres_changes events too: the "moved out of scope" update never reaches this
+   * page live (see useFulfillmentQueue's doc comment), so this page has to remove its
+   * own card immediately on success rather than wait for an event that won't arrive.
+   * markOutForDelivery doesn't set this — 'out_for_delivery' stays visible, so the
+   * normal realtime patch-in-place (and the column it renders in) still updates live.
+   */
+  async function runAction(orderId: string, action: () => Promise<void>, removesFromView: boolean) {
     try {
       await action()
       setActionError(null)
+      if (removesFromView) removeOrder(orderId)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     }
@@ -183,7 +193,7 @@ export function FulfillmentPage() {
               variant="walk-in"
               actionLabel="Served"
               actionColor="green"
-              onAction={(id) => void runAction(() => markServed(id))}
+              onAction={(id) => void runAction(id, () => markServed(id), true)}
             />
           </section>
 
@@ -195,7 +205,7 @@ export function FulfillmentPage() {
               variant="pickup"
               actionLabel="Picked Up"
               actionColor="green"
-              onAction={(id) => void runAction(() => markPickedUp(id))}
+              onAction={(id) => void runAction(id, () => markPickedUp(id), true)}
             />
           </section>
 
@@ -207,7 +217,7 @@ export function FulfillmentPage() {
               variant="ready-to-dispatch"
               actionLabel="Out for Delivery"
               actionColor="orange"
-              onAction={(id) => void runAction(() => markOutForDelivery(id))}
+              onAction={(id) => void runAction(id, () => markOutForDelivery(id), false)}
             />
             <ColumnSection
               label="Delivery Queue"
@@ -215,7 +225,7 @@ export function FulfillmentPage() {
               variant="delivery-queue"
               actionLabel="Delivered"
               actionColor="green"
-              onAction={(id) => void runAction(() => markDelivered(id))}
+              onAction={(id) => void runAction(id, () => markDelivered(id), true)}
             />
           </section>
         </div>
