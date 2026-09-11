@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Button, Card, Input } from '../../components/ui'
-import {
-  connectDevice,
-  disconnectDevice,
-  getDeviceAuthStatus,
-  onDeviceAuthChange,
-  type DeviceAuthStatus,
-} from '../../lib/deviceAuth'
+import { Button, Card } from '../../components/ui'
+import { DeviceConnectForm } from '../auth/DeviceConnectForm'
+import { disconnectDevice, getDeviceAuthStatus, onDeviceAuthChange, type DeviceAuthStatus } from '../../lib/deviceAuth'
 import { isSupabaseConfigured } from '../../lib/supabaseClient'
 
 /**
@@ -16,31 +11,18 @@ import { isSupabaseConfigured } from '../../lib/supabaseClient'
  * scoped those tables to `authenticated` only; without it, this device syncs as
  * `anon` and those reads/writes will be denied. Session persists locally afterward —
  * this only needs to be done once per physical device, typically during setup.
+ *
+ * A device usually never reaches this screen not-connected — see DeviceSetupScreen.tsx,
+ * which handles that case pre-login. This section exists for checking status and
+ * reconnecting (e.g. after a Disconnect, or a session that somehow expired).
  */
 export function DeviceAuthSection() {
   const [status, setStatus] = useState<DeviceAuthStatus | null>(null)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [connecting, setConnecting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     getDeviceAuthStatus().then(setStatus)
     return onDeviceAuthChange(setStatus)
   }, [])
-
-  async function handleConnect() {
-    if (!email.trim() || !password || connecting) return
-    setConnecting(true)
-    setError(null)
-    const result = await connectDevice(email.trim(), password)
-    setConnecting(false)
-    if (result.ok) {
-      setPassword('')
-    } else {
-      setError(result.error)
-    }
-  }
 
   return (
     <Card padding="md" className="flex flex-col gap-md">
@@ -68,33 +50,7 @@ export function DeviceAuthSection() {
         </div>
       )}
 
-      {isSupabaseConfigured && status && !status.connected && (
-        <div className="flex flex-col gap-sm">
-          <Input
-            label="Device email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="username"
-          />
-          <Input
-            label="Device password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-          />
-          {error && <p className="text-label-bold text-error">{error}</p>}
-          <Button
-            variant="primary"
-            disabled={!email.trim() || !password || connecting}
-            onClick={() => void handleConnect()}
-            className="self-start"
-          >
-            {connecting ? 'Connecting…' : 'Connect This Device'}
-          </Button>
-        </div>
-      )}
+      {isSupabaseConfigured && status && !status.connected && <DeviceConnectForm />}
     </Card>
   )
 }
