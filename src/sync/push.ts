@@ -8,11 +8,26 @@ function contentDiffers(a: Record<string, unknown>, b: Record<string, unknown>):
   return JSON.stringify(strip(a)) !== JSON.stringify(strip(b))
 }
 
+/**
+ * PostgREST inlines an `.in('id', ids)` filter straight into the request's query string,
+ * so an unbounded id list scales with however large the local pending backlog has grown
+ * (e.g. a device that sat broken for a while before anyone noticed) and can blow past the
+ * gateway's URL-length limit — surfacing as a flat "Bad Request" with no row-level detail,
+ * and (before this fix) aborting every table queued after this one in SYNC_TABLES. Chunking
+ * keeps each request's id list small regardless of backlog size.
+ */
+const FETCH_BY_IDS_CHUNK_SIZE = 150
+
 async function fetchRemoteByIds(remote: string, ids: string[]): Promise<Map<string, any>> {
   if (ids.length === 0) return new Map()
-  const { data, error } = await supabase.from(remote).select('*').in('id', ids)
-  if (error) throw new Error(`Fetch failed for ${remote}: ${error.message}`)
-  return new Map((data ?? []).map((row: any) => [row.id, row]))
+  const result = new Map<string, any>()
+  for (let i = 0; i < ids.length; i += FETCH_BY_IDS_CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + FETCH_BY_IDS_CHUNK_SIZE)
+    const { data, error } = await supabase.from(remote).select('*').in('id', chunk)
+    if (error) throw new Error(`Fetch failed for ${remote}: ${error.message}`)
+    for (const row of data ?? []) result.set((row as any).id, row)
+  }
+  return result
 }
 
 /** Postgres unique_violation SQLSTATE — see orders_order_number_unique_idx. */
@@ -137,13 +152,22 @@ async function pushLastWriteWins(config: SyncTableConfig, pendingRows: any[]): P
 export async function pushPending(lastSyncedAt: string | null): Promise<void> {
   const errors: string[] = []
   for (const config of SYNC_TABLES) {
-    const pendingRows = await config.local.where('sync_status').equals('pending').toArray()
-    if (pendingRows.length === 0) continue
+    try {
+      const pendingRows = await config.local.where('sync_status').equals('pending').toArray()
+      if (pendingRows.length === 0) continue
 
-    const tableErrors = config.conflictAware
-      ? await pushConflictAware(config, pendingRows, lastSyncedAt)
-      : await pushLastWriteWins(config, pendingRows)
-    errors.push(...tableErrors)
+      const tableErrors = config.conflictAware
+        ? await pushConflictAware(config, pendingRows, lastSyncedAt)
+        : await pushLastWriteWins(config, pendingRows)
+      errors.push(...tableErrors)
+    } catch (err) {
+      // A failure here (e.g. fetchRemoteByIds rejecting before the per-row try/catch
+      // inside pushConflictAware/pushLastWriteWins even starts) must not stop every
+      // other table queued after this one from getting its own push attempt this cycle.
+      const message = err instanceof Error ? err.message : String(err)
+      console.error(`Sync push failed for table ${config.name}`, err)
+      errors.push(message)
+    }
   }
 
   if (errors.length > 0) throw new Error(errors.join('; '))
