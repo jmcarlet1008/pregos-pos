@@ -29,8 +29,11 @@ export interface ProductOptionsModalProps {
   mode: 'add' | 'edit'
   initialSelectionIds?: string[]
   initialQuantity?: number
+  initialRemarks?: string | null
+  /** Register only — Order Management's flows reuse this modal without a remarks field. */
+  showRemarks?: boolean
   onClose: () => void
-  onConfirm: (selections: ModifierOption[], quantity: number) => void
+  onConfirm: (selections: ModifierOption[], quantity: number, remarks: string | null) => void
   onDelete?: () => void
 }
 
@@ -40,6 +43,8 @@ export function ProductOptionsModal({
   mode,
   initialSelectionIds = [],
   initialQuantity = 1,
+  initialRemarks = null,
+  showRemarks = false,
   onClose,
   onConfirm,
   onDelete,
@@ -47,11 +52,13 @@ export function ProductOptionsModal({
   const groups = useLiveQuery(() => (open ? loadGroups(product.id) : undefined), [open, product.id]) ?? []
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(initialSelectionIds))
   const [quantity, setQuantity] = useState(initialQuantity)
+  const [remarks, setRemarks] = useState(initialRemarks ?? '')
 
   useEffect(() => {
     if (!open) return
     setSelectedIds(new Set(initialSelectionIds))
     setQuantity(initialQuantity)
+    setRemarks(initialRemarks ?? '')
     // Reset only when the modal opens or the target product changes, not on every parent re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, product.id])
@@ -112,7 +119,7 @@ export function ProductOptionsModal({
               disabled={!isValid}
               onClick={() => {
                 vibrate('tap')
-                onConfirm(selectedOptions, quantity)
+                onConfirm(selectedOptions, quantity, remarks.trim() ? remarks.trim() : null)
               }}
             >
               {mode === 'add' ? 'Add to Cart' : 'Save Changes'}
@@ -184,6 +191,22 @@ export function ProductOptionsModal({
             </div>
           </fieldset>
         ))}
+
+        {showRemarks && (
+          <div className="flex flex-col gap-xs">
+            <label htmlFor="register-line-remarks" className="text-label-bold text-on-surface">
+              Special instructions <span className="font-normal text-on-surface-variant">(optional)</span>
+            </label>
+            <textarea
+              id="register-line-remarks"
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              placeholder="e.g. extra crust, no onions"
+              rows={2}
+              className="min-h-touch w-full rounded-md border border-outline bg-surface-container-lowest px-md py-sm text-body-md text-on-surface placeholder:text-on-surface-variant/60 focus:border-2 focus:border-primary focus:outline-none"
+            />
+          </div>
+        )}
       </div>
     </Modal>
   )

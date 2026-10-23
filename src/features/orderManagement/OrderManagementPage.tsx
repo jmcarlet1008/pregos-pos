@@ -379,6 +379,7 @@ export function OrderManagementPage() {
               <thead className="sticky top-0 bg-surface-container text-label-bold text-on-surface-variant">
                 <tr>
                   <th className="px-sm py-xs">Order #</th>
+                  <th className="px-sm py-xs">Customer</th>
                   <th className="px-sm py-xs">Channel</th>
                   <th className="px-sm py-xs">Fulfillment</th>
                   <th className="px-sm py-xs">Status</th>
@@ -391,6 +392,7 @@ export function OrderManagementPage() {
                 {filteredBundles.map(({ order }) => (
                   <tr key={order.id} className="border-t border-surface-dim hover:bg-surface-container">
                     <td className="px-sm py-xs font-bold text-on-surface">#{order.order_number ?? '—'}</td>
+                    <td className="px-sm py-xs text-on-surface">{order.customer_name ?? '—'}</td>
                     <td className="px-sm py-xs text-on-surface-variant">{CHANNEL_LABEL[order.channel]}</td>
                     <td className="px-sm py-xs text-on-surface-variant">{FULFILLMENT_LABEL[getFulfillmentKind(order)]}</td>
                     <td className="px-sm py-xs">

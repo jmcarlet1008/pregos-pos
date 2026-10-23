@@ -75,6 +75,9 @@ export function CartPanel({ order, onLineTap, onCheckout, onHold, onOpenHeld, he
                       ))}
                     </ul>
                   )}
+                  {line.remarks && (
+                    <p className="mt-[2px] text-label-sm italic text-on-surface-variant">"{line.remarks}"</p>
+                  )}
                 </button>
               </li>
             ))}

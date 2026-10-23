@@ -1,9 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useState } from 'react'
 import type { Order, PaymentMethod } from '../../db'
-import { Button } from '../../components/ui'
+import { Button, Input } from '../../components/ui'
 import { formatCurrency } from '../../lib/currency'
 import { loadLines, type CartLineWithModifiers } from './CartPanel'
 import { loadOrderDiscounts, removeOrderDiscount } from './discountData'
+import { validateWalkInCustomer, type WalkInCustomerInput } from './checkoutData'
 import { lineChargeAmount } from './registerData'
 
 export interface CheckoutScreenProps {
@@ -12,14 +14,27 @@ export interface CheckoutScreenProps {
   onAddItem: () => void
   onPay: (method: PaymentMethod) => void
   onOpenDiscountModal: () => void
+  customer: WalkInCustomerInput
+  onCustomerChange: (next: WalkInCustomerInput) => void
 }
 
 const DISCOUNT_LABEL = { senior: 'Senior Citizen', pwd: 'PWD' } as const
 
-export function CheckoutScreen({ order, onLineTap, onAddItem, onPay, onOpenDiscountModal }: CheckoutScreenProps) {
+export function CheckoutScreen({
+  order,
+  onLineTap,
+  onAddItem,
+  onPay,
+  onOpenDiscountModal,
+  customer,
+  onCustomerChange,
+}: CheckoutScreenProps) {
   const lines = useLiveQuery(() => (order ? loadLines(order.id) : undefined), [order?.id]) ?? []
   const discounts = useLiveQuery(() => (order ? loadOrderDiscounts(order.id) : undefined), [order?.id]) ?? []
   const discountById = new Map(discounts.map((d) => [d.id, d]))
+  const [touched, setTouched] = useState({ name: false, contact: false })
+  const { nameError, contactError } = validateWalkInCustomer(customer)
+  const canPay = lines.length > 0 && !nameError && !contactError
 
   async function handleRemoveDiscount(discountId: string) {
     if (!order) return
@@ -85,12 +100,53 @@ export function CheckoutScreen({ order, onLineTap, onAddItem, onPay, onOpenDisco
                         ))}
                       </ul>
                     )}
+                    {line.remarks && (
+                      <p className="mt-xs text-label-sm italic text-on-surface-variant">"{line.remarks}"</p>
+                    )}
                   </button>
                 </li>
               )
             })}
           </ul>
         )}
+
+        <div className="mt-md flex flex-col gap-sm border-t border-surface-dim pt-md">
+          <span className="text-label-bold text-on-surface-variant">Customer</span>
+          <Input
+            label="Customer name / nickname *"
+            value={customer.name}
+            onChange={(e) => onCustomerChange({ ...customer, name: e.target.value })}
+            onBlur={() => setTouched((t) => ({ ...t, name: true }))}
+            error={touched.name && nameError ? nameError : undefined}
+            autoComplete="off"
+            autoCapitalize="words"
+            placeholder="e.g. Ana"
+          />
+          <Input
+            label="Contact number (optional)"
+            type="tel"
+            inputMode="tel"
+            value={customer.contact}
+            onChange={(e) => onCustomerChange({ ...customer, contact: e.target.value })}
+            onBlur={() => setTouched((t) => ({ ...t, contact: true }))}
+            error={touched.contact && contactError ? contactError : undefined}
+            autoComplete="off"
+            placeholder="e.g. 0917 123 4567"
+          />
+          <div className="flex flex-col gap-xs">
+            <label htmlFor="checkout-order-note" className="text-label-bold text-on-surface">
+              Order note <span className="font-normal text-on-surface-variant">(optional)</span>
+            </label>
+            <textarea
+              id="checkout-order-note"
+              value={customer.note}
+              onChange={(e) => onCustomerChange({ ...customer, note: e.target.value })}
+              placeholder="e.g. customer is waiting outside, pack separately"
+              rows={2}
+              className="min-h-touch w-full rounded-md border border-outline bg-surface-container-lowest px-md py-sm text-body-md text-on-surface placeholder:text-on-surface-variant/60 focus:border-2 focus:border-primary focus:outline-none"
+            />
+          </div>
+        </div>
       </div>
 
       {discounts.length > 0 && (
@@ -128,11 +184,16 @@ export function CheckoutScreen({ order, onLineTap, onAddItem, onPay, onOpenDisco
           <span className="text-headline-md text-on-surface">Total</span>
           <span className="text-headline-lg text-primary">{formatCurrency(order?.total ?? 0)}</span>
         </div>
+        {lines.length > 0 && (nameError || contactError) && (
+          <p className="text-label-sm text-error">
+            {nameError ? 'Enter the customer’s name to continue.' : 'Fix the contact number, or clear it, to continue.'}
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-sm">
-          <Button variant="primary" size="lg" disabled={lines.length === 0} onClick={() => onPay('cash')}>
+          <Button variant="primary" size="lg" disabled={!canPay} onClick={() => onPay('cash')}>
             Pay with Cash
           </Button>
-          <Button variant="primary" size="lg" disabled={lines.length === 0} onClick={() => onPay('gcash')}>
+          <Button variant="primary" size="lg" disabled={!canPay} onClick={() => onPay('gcash')}>
             Pay with GCash
           </Button>
         </div>

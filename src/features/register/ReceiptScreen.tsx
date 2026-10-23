@@ -61,6 +61,9 @@ export function ReceiptScreen({ orderId, onDone, doneLabel = 'New Order', printL
           {business?.address && <p className="text-label-sm text-on-surface-variant">{business.address}</p>}
           {business?.phone && <p className="text-label-sm text-on-surface-variant">{business.phone}</p>}
           <p className="text-label-sm text-on-surface-variant">Order #{order.order_number ?? '—'}</p>
+          {order.customer_name && (
+            <p className="text-label-sm text-on-surface-variant">Customer: {order.customer_name}</p>
+          )}
           <p className="text-label-sm text-on-surface-variant">{printedAt.toLocaleString()}</p>
           {voided && <p className="mt-xs text-label-bold uppercase text-error">Voided</p>}
         </div>
@@ -88,6 +91,9 @@ export function ReceiptScreen({ orderId, onDone, doneLabel = 'New Order', printL
                     <span>{mod.price_adjustment > 0 ? formatCurrency(mod.price_adjustment) : ''}</span>
                   </div>
                 ))}
+                {line.remarks && (
+                  <div className="pl-md text-label-sm italic text-on-surface-variant">"{line.remarks}"</div>
+                )}
               </li>
             ))}
           </ul>
@@ -159,6 +165,16 @@ export function ReceiptScreen({ orderId, onDone, doneLabel = 'New Order', printL
           )}
         </div>
       </div>
+
+      {(order.customer_contact || order.note) && (
+        // Staff-only: outside .print-receipt, so index.css's print rules keep the contact
+        // number and order note off the customer receipt (on-screen detail view only).
+        <div className="flex flex-col gap-xs rounded-lg border border-surface-dim bg-surface-container px-md py-sm text-body-md text-on-surface">
+          <span className="text-label-bold text-on-surface-variant">Staff only — not printed</span>
+          {order.customer_contact && <span>📞 {order.customer_contact}</span>}
+          {order.note && <span className="font-bold">📝 {order.note}</span>}
+        </div>
+      )}
 
       <div className="flex flex-col gap-sm">
         <Button variant="primary" size="lg" fullWidth onClick={() => window.print()}>
