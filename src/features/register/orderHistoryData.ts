@@ -23,10 +23,18 @@ export function filterOrderHistory(
   paymentByOrder: Map<string, Payment>,
 ): Order[] {
   const term = searchTerm.trim()
+  const lowerTerm = term.toLowerCase()
   return filterOrdersInRange(orders, start, end)
     .filter((o) => statusFilter === 'all' || o.status === statusFilter)
     .filter((o) => paymentFilter === 'all' || paymentByOrder.get(o.id)?.method === paymentFilter)
-    .filter((o) => !term || String(o.order_number ?? '').includes(term))
+    // Order number, or (Register walk-ins) customer name — a null name on an older
+    // order just never matches the name half; its number still matches as before.
+    .filter(
+      (o) =>
+        !term ||
+        String(o.order_number ?? '').includes(term) ||
+        (o.customer_name ?? '').toLowerCase().includes(lowerTerm),
+    )
     .sort((a, b) => orderTimestamp(b).localeCompare(orderTimestamp(a)))
 }
 

@@ -55,11 +55,25 @@ export function FulfillmentOrderCard({
   return (
     <div className="flex flex-col gap-sm rounded-lg border border-surface-dim bg-surface-container-lowest p-md">
       <div className="flex flex-wrap items-center justify-between gap-xs">
-        <span className="text-headline-md text-on-surface">#{order.order_number ?? '—'}</span>
+        <span className="text-headline-md text-on-surface">
+          #{order.order_number ?? '—'}
+          {/* Walk-ins: the name to call out at hand-off. Older nameless walk-ins show nothing extra. */}
+          {variant === 'walk-in' && order.customer_name ? ` · ${order.customer_name}` : ''}
+        </span>
         <span className="text-label-bold text-on-surface-variant">
           {order.requested_time ? `Requested ${formatTime(order.requested_time)}` : '—'}
         </span>
       </div>
+
+      {variant === 'walk-in' && order.customer_contact && (
+        <div className="text-body-md text-on-surface-variant">📞 {order.customer_contact}</div>
+      )}
+
+      {order.note && (
+        <div className="rounded-md bg-warning-container px-sm py-xs text-body-md font-bold text-on-warning-container">
+          📝 {order.note}
+        </div>
+      )}
 
       {lines.length > 0 && (
         <div className="flex flex-col gap-xs">

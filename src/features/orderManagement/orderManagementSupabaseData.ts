@@ -68,6 +68,18 @@ async function fetchLinesForOrder(
 }
 
 /**
+ * An empty Register cart: in-store, still unnumbered, no lines. Register assigns
+ * order_number locally in the same transaction that adds an order's first line
+ * (registerData.ts's addOrderLine), so this shape is never a real sale — just a cart an
+ * iPad opened (every boot/reload creates one) that may later be voided empty. Numbering
+ * it here would burn a real order number on it, so Order Management neither numbers
+ * nor lists it. It's picked up normally once it gets a line (and, with it, a number).
+ */
+function isEmptyRegisterCart(order: Order, lineCount: number): boolean {
+  return order.channel === 'in_store' && order.order_number == null && lineCount === 0
+}
+
+/**
  * The live order set: an initial fetch bounded by `range` (Order Management shows
  * every order, every channel, every status — unlike Kitchen/Fulfillment's small
  * kitchen_status subset — so the initial payload needs a bound of its own; this table
@@ -131,12 +143,12 @@ export function useOrderManagementQueue(range: { from: Date; to: Date }): {
         return
       }
 
+      const { lines, modifiersByLineId } = await fetchLinesForOrder(rawOrder.id)
+      if (cancelled || isEmptyRegisterCart(rawOrder, lines.length)) return
       // Every kitchen card needs a number, and Order Management is often the *first*
       // screen to ever see a given order (a manager may check it before any kitchen
       // station has loaded that order) — so this can't be left to /kitchen alone.
       const order = await assignOrderNumberIfMissing(rawOrder)
-      if (cancelled) return
-      const { lines, modifiersByLineId } = await fetchLinesForOrder(order.id)
       if (cancelled) return
       knownIds.add(order.id)
       editedAtByOrderId.set(order.id, order.items_edited_at)
@@ -160,14 +172,16 @@ export function useOrderManagementQueue(range: { from: Date; to: Date }): {
         return
       }
       const rows = (data ?? []) as Order[]
-      const entries = await Promise.all(
+      const fetched = await Promise.all(
         rows.map(async (rawOrder) => {
+          const { lines, modifiersByLineId } = await fetchLinesForOrder(rawOrder.id)
+          if (isEmptyRegisterCart(rawOrder, lines.length)) return null
           const order = await assignOrderNumberIfMissing(rawOrder)
-          const { lines, modifiersByLineId } = await fetchLinesForOrder(order.id)
           return [order.id, { order, lines, modifiersByLineId }] as const
         }),
       )
       if (cancelled) return
+      const entries = fetched.filter((entry) => entry != null)
       knownIds.clear()
       editedAtByOrderId.clear()
       for (const [orderId, bundle] of entries) {

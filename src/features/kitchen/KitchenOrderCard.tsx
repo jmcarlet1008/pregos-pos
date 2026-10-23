@@ -159,6 +159,11 @@ export function KitchenOrderCard({
         <div className="flex flex-wrap items-center justify-between gap-xs">
           <div className="flex flex-wrap items-center gap-sm">
             <span className="text-headline-md text-on-surface">#{order.order_number ?? '—'}</span>
+            {kind === 'walk-in' && order.customer_name && (
+              // Register walk-ins: prominent so the cook can call the name out. Older
+              // walk-ins (before names were collected) simply show nothing here.
+              <span className="text-headline-md text-on-surface">· {order.customer_name}</span>
+            )}
             <span className="flex items-center gap-xs rounded-full bg-surface-container px-sm py-xs text-label-bold text-on-surface">
               <FulfillmentIcon width={16} height={16} />
               {FULFILLMENT_LABEL[kind]}
@@ -201,6 +206,16 @@ export function KitchenOrderCard({
 
         {kind !== 'walk-in' && order.customer_name && (
           <div className="text-body-md font-bold text-on-surface">👤 {order.customer_name}</div>
+        )}
+
+        {kind === 'walk-in' && order.customer_contact && (
+          <div className="text-body-md text-on-surface-variant">📞 {order.customer_contact}</div>
+        )}
+
+        {order.note && (
+          <div className="rounded-md bg-warning-container px-sm py-xs text-body-md font-bold text-on-warning-container">
+            📝 {order.note}
+          </div>
         )}
 
         {kind === 'delivery' && order.delivery_address && (

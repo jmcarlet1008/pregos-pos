@@ -60,6 +60,7 @@ export async function createOrder(): Promise<string> {
     cancellation_reason: null,
     items_edited_at: null,
     items_edit_note: null,
+    note: null,
     sync_status: 'pending',
     ...timestamps(),
   }
@@ -119,6 +120,7 @@ export async function addOrderLine(
   product: Product,
   selections: ModifierOption[],
   quantity: number,
+  remarks: string | null = null,
 ): Promise<void> {
   await db.transaction('rw', [db.orderLines, db.orderLineModifiers, db.orders], async () => {
     // Lazily assign the real order number on this order's first line — see
@@ -150,7 +152,7 @@ export async function addOrderLine(
       unit_cost,
       line_total: total,
       order_discount_id: null,
-      remarks: null, // Register has no remarks UI — only /order's CustomerLineModal sets this
+      remarks, // optional per-line instructions from ProductOptionsModal, independent per line
       sync_status: 'pending',
       ...timestamps(),
     }
@@ -173,13 +175,17 @@ export async function addOrderLine(
   })
 }
 
-/** Increments the quantity of an existing simple (no-modifier) line for a product, or returns false if none exists. */
+/**
+ * Increments the quantity of an existing simple (no-modifier, no-remarks) line for a
+ * product, or returns false if none exists. A line with remarks is never merged into —
+ * a second tap of the same item may need different instructions, so it gets its own line.
+ */
 export async function incrementSimpleLine(orderId: string, productId: string): Promise<boolean> {
   return db.transaction('rw', [db.orderLines, db.orderLineModifiers, db.orders], async () => {
     const candidates = await db.orderLines.where({ order_id: orderId, product_id: productId }).toArray()
     for (const line of candidates) {
       const modCount = await db.orderLineModifiers.where('order_line_id').equals(line.id).count()
-      if (modCount === 0) {
+      if (modCount === 0 && !line.remarks) {
         const quantity = line.quantity + 1
         await db.orderLines.put(
           touch({ ...line, quantity, line_total: lineTotal(line.unit_price, [], quantity) }),
@@ -192,11 +198,12 @@ export async function incrementSimpleLine(orderId: string, productId: string): P
   })
 }
 
-/** Replaces the quantity and selected modifiers for an existing line, and recomputes its total. */
+/** Replaces the quantity, selected modifiers and remarks for an existing line, and recomputes its total. */
 export async function updateOrderLine(
   lineId: string,
   selections: ModifierOption[],
   quantity: number,
+  remarks: string | null,
 ): Promise<void> {
   await db.transaction('rw', [db.orderLines, db.orderLineModifiers, db.orders], async () => {
     const line = await db.orderLines.get(lineId)
@@ -221,7 +228,7 @@ export async function updateOrderLine(
       selections.map((s) => s.price_adjustment),
       quantity,
     )
-    await db.orderLines.put(touch({ ...line, quantity, line_total: total }))
+    await db.orderLines.put(touch({ ...line, quantity, line_total: total, remarks }))
     await recalcOrderTotal(line.order_id)
   })
 }

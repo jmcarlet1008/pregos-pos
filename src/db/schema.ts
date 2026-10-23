@@ -187,6 +187,11 @@ export interface Order extends BaseEntity {
   // migration's comment for why updated_at can't be reused for this.
   items_edited_at: string | null
   items_edit_note: string | null // human-readable summary, e.g. "+1 item, -1 item, 1 modified"
+  // ---- Register walk-ins (see supabase/migrations/20261022000000_add_order_note.sql) ----
+  // Optional order-wide note from the Register's Checkout screen, shown to /kitchen and
+  // /fulfillment, never printed on the customer receipt. Not indexed, so no Dexie
+  // .version() bump — rows written before this field existed read it as undefined.
+  note: string | null
 }
 
 export interface OrderLine extends BaseEntity {

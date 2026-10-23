@@ -26,7 +26,7 @@ import {
   stockStatus,
   updateOrderLine,
 } from './registerData'
-import { completeOrder } from './checkoutData'
+import { completeOrder, EMPTY_WALK_IN_CUSTOMER, type WalkInCustomerInput } from './checkoutData'
 import { addOrderDiscount } from './discountData'
 import { runSyncCycle } from '../../sync/syncEngine'
 import { SeniorPwdDiscountModal } from './SeniorPwdDiscountModal'
@@ -50,6 +50,16 @@ export function RegisterPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [submittingPayment, setSubmittingPayment] = useState(false)
   const [completedOrderId, setCompletedOrderId] = useState<string | null>(null)
+  // Checkout's customer name/contact/note, kept per order (not in CheckoutScreen) so it
+  // survives Checkout → Payment → Back, "+ Add Item", and hold/resume within the
+  // session. Nothing is written to the order until payment completes (completeOrder).
+  const [customerDrafts, setCustomerDrafts] = useState<Record<string, WalkInCustomerInput>>({})
+  const currentCustomer = (currentOrderId && customerDrafts[currentOrderId]) || EMPTY_WALK_IN_CUSTOMER
+
+  function handleCustomerChange(next: WalkInCustomerInput) {
+    if (!currentOrderId) return
+    setCustomerDrafts((prev) => ({ ...prev, [currentOrderId]: next }))
+  }
 
   const initRan = useRef(false)
   useEffect(() => {
@@ -177,15 +187,15 @@ export function RegisterPage() {
     if (product) await openAddFlow(product)
   }
 
-  async function handleAddConfirm(selections: ModifierOption[], quantity: number) {
+  async function handleAddConfirm(selections: ModifierOption[], quantity: number, remarks: string | null) {
     if (!currentOrderId || !addModalProduct) return
-    await addOrderLine(currentOrderId, addModalProduct, selections, quantity)
+    await addOrderLine(currentOrderId, addModalProduct, selections, quantity, remarks)
     setAddModalProduct(null)
   }
 
-  async function handleEditConfirm(selections: ModifierOption[], quantity: number) {
+  async function handleEditConfirm(selections: ModifierOption[], quantity: number, remarks: string | null) {
     if (!editingLine) return
-    await updateOrderLine(editingLine.id, selections, quantity)
+    await updateOrderLine(editingLine.id, selections, quantity, remarks)
     setEditingLine(null)
   }
 
@@ -215,7 +225,9 @@ export function RegisterPage() {
     if (!currentOrderId) return
     setSubmittingPayment(true)
     try {
-      await completeOrder(currentOrderId, input, user?.id ?? null)
+      await completeOrder(currentOrderId, input, user?.id ?? null, currentCustomer)
+      const paidOrderId = currentOrderId
+      setCustomerDrafts(({ [paidOrderId]: _paid, ...rest }) => rest)
       // Nudges the order (now kitchen_status: 'preparing') to Supabase right away —
       // /kitchen reads Supabase directly and would otherwise wait up to the 30s sync
       // interval, missing "the moment payment completes." Fire-and-forget: runSyncCycle
@@ -307,6 +319,8 @@ export function RegisterPage() {
           onAddItem={() => setScreen('menu')}
           onPay={handlePay}
           onOpenDiscountModal={() => setDiscountModalOpen(true)}
+          customer={currentCustomer}
+          onCustomerChange={handleCustomerChange}
         />
       )}
 
@@ -347,6 +361,7 @@ export function RegisterPage() {
           open
           product={addModalProduct}
           mode="add"
+          showRemarks
           onClose={() => setAddModalProduct(null)}
           onConfirm={handleAddConfirm}
         />
@@ -357,8 +372,10 @@ export function RegisterPage() {
           open
           product={editingProduct}
           mode="edit"
+          showRemarks
           initialSelectionIds={editingLine.modifiers.map((m) => m.modifier_option_id)}
           initialQuantity={editingLine.quantity}
+          initialRemarks={editingLine.remarks}
           onClose={() => setEditingLine(null)}
           onConfirm={handleEditConfirm}
           onDelete={handleDeleteLine}

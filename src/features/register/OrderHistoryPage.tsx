@@ -185,9 +185,9 @@ export function OrderHistoryPage() {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search order #…"
-          aria-label="Search by order number"
-          className="w-48"
+          placeholder="Search order # or name…"
+          aria-label="Search by order number or customer name"
+          className="w-56"
         />
       </div>
 
@@ -201,6 +201,7 @@ export function OrderHistoryPage() {
             <thead className="sticky top-0 bg-surface-container text-label-bold text-on-surface-variant">
               <tr>
                 <th className="px-sm py-xs">Order #</th>
+                <th className="px-sm py-xs">Customer</th>
                 <th className="px-sm py-xs">Date</th>
                 <th className="px-sm py-xs">Time</th>
                 <th className="px-sm py-xs">Cashier</th>
@@ -221,6 +222,7 @@ export function OrderHistoryPage() {
                     className="cursor-pointer border-t border-surface-dim hover:bg-surface-container"
                   >
                     <td className="px-sm py-xs font-bold text-on-surface">#{order.order_number ?? '—'}</td>
+                    <td className="px-sm py-xs text-on-surface">{order.customer_name ?? '—'}</td>
                     <td className="px-sm py-xs text-on-surface-variant">{ts.toLocaleDateString('en-PH')}</td>
                     <td className="px-sm py-xs text-on-surface-variant">
                       {ts.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
