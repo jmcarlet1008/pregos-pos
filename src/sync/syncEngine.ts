@@ -55,9 +55,11 @@ export function runSyncCycle(): Promise<void> {
  * needs a manager's explicit resolution, not a silent re-push of the same disagreement).
  */
 export async function forceResync(): Promise<void> {
+  // One modify() per table (a single IndexedDB transaction) rather than one concurrent
+  // update() per row — thousands of simultaneous transactions broke iPad Safari's
+  // IndexedDB on 2026-10-24 (see markSynced in push.ts).
   for (const config of SYNC_TABLES) {
-    const rows = await config.local.where('sync_status').equals('synced').toArray()
-    await Promise.all(rows.map((r) => config.local.update(r.id, { sync_status: 'pending' })))
+    await config.local.where('sync_status').equals('synced').modify({ sync_status: 'pending' })
   }
   await runSyncCycle()
 }

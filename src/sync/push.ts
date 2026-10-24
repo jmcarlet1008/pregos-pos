@@ -1,6 +1,6 @@
 import { db } from '../db'
 import { supabase } from '../lib/supabaseClient'
-import { SYNC_TABLES, stripSyncStatus, type SyncTableConfig } from './tables'
+import { SYNC_TABLES, stripSyncStatus, summarizeErrors, type SyncTableConfig } from './tables'
 
 /** Ignores id/timestamps when deciding whether two versions of a row actually disagree. */
 function contentDiffers(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
@@ -57,6 +57,18 @@ async function retryWithFreshOrderNumber(row: any): Promise<any> {
 }
 
 /**
+ * Marks successfully pushed rows 'synced' in one bulk write instead of one IndexedDB
+ * transaction per row. iPad Safari's IndexedDB started failing every write with
+ * "UnknownError: Failed to delete record from object store" after a Force Resync queued
+ * ~3,000 rows and they were each marked individually (2026-10-24). If this write fails,
+ * the rows just stay 'pending' and are re-pushed next cycle — the upsert is idempotent.
+ */
+async function markSynced(config: SyncTableConfig, ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  await config.local.bulkUpdate(ids.map((key) => ({ key, changes: { sync_status: 'synced' } })))
+}
+
+/**
  * Pushes one table's pending rows. Each row is isolated in its own try/catch: a bad row
  * (conflict-log failure, or any other upsert error) is recorded and skipped rather than
  * aborting the rest of the table — a single stuck order must never block every other
@@ -69,6 +81,7 @@ async function pushConflictAware(
 ): Promise<string[]> {
   const remoteById = await fetchRemoteByIds(config.remote, pendingRows.map((r) => r.id))
   const errors: string[] = []
+  const syncedIds: string[] = []
 
   for (let row of pendingRows) {
     try {
@@ -94,7 +107,7 @@ async function pushConflictAware(
         ;({ error } = await supabase.from(config.remote).upsert(stripSyncStatus(row)))
       }
       if (error) throw new Error(`Push failed for ${config.name}: ${error.message}`)
-      await config.local.update(row.id, { sync_status: 'synced' })
+      syncedIds.push(row.id)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error(`Sync push failed for ${config.name} row ${row.id}`, err)
@@ -102,6 +115,7 @@ async function pushConflictAware(
     }
   }
 
+  await markSynced(config, syncedIds)
   return errors
 }
 
@@ -110,26 +124,29 @@ async function pushLastWriteWins(config: SyncTableConfig, pendingRows: any[]): P
   const errors: string[] = []
 
   const toUpsert: any[] = []
+  const remoteWins: any[] = []
   for (const row of pendingRows) {
     const remote = remoteById.get(row.id)
     if (remote && remote.updated_at > row.updated_at) {
       // Remote is newer — it wins. Pull it down and drop the local pending edit.
-      await config.local.put({ ...remote, sync_status: 'synced' })
+      remoteWins.push({ ...remote, sync_status: 'synced' })
     } else {
       toUpsert.push(stripSyncStatus(row))
     }
   }
+  if (remoteWins.length > 0) await config.local.bulkPut(remoteWins)
 
   if (toUpsert.length === 0) return errors
 
   const { error } = await supabase.from(config.remote).upsert(toUpsert)
   if (!error) {
-    await Promise.all(toUpsert.map((r) => config.local.update(r.id, { sync_status: 'synced' })))
+    await markSynced(config, toUpsert.map((r) => r.id))
     return errors
   }
 
   // Batch upsert failed — fall back to one row at a time so a single bad row (e.g. one
   // referencing a parent that hasn't landed yet) doesn't block all of its siblings.
+  const syncedIds: string[] = []
   for (const row of toUpsert) {
     const { error: rowError } = await supabase.from(config.remote).upsert(row)
     if (rowError) {
@@ -137,8 +154,9 @@ async function pushLastWriteWins(config: SyncTableConfig, pendingRows: any[]): P
       errors.push(`Push failed for ${config.name}: ${rowError.message}`)
       continue
     }
-    await config.local.update(row.id, { sync_status: 'synced' })
+    syncedIds.push(row.id)
   }
+  await markSynced(config, syncedIds)
   return errors
 }
 
@@ -170,5 +188,5 @@ export async function pushPending(lastSyncedAt: string | null): Promise<void> {
     }
   }
 
-  if (errors.length > 0) throw new Error(errors.join('; '))
+  if (errors.length > 0) throw new Error(summarizeErrors(errors))
 }

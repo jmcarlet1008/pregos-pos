@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
-import { SYNC_TABLES } from './tables'
+import { SYNC_TABLES, summarizeErrors } from './tables'
 
 /**
  * Pulls every remote row changed since `sinceIso` (or the whole table on first
@@ -31,13 +31,16 @@ export async function pullChanges(sinceIso: string | null): Promise<void> {
       if (error) throw new Error(`Pull failed for ${config.name}: ${error.message}`)
       if (!data || data.length === 0) continue
 
-      for (const remoteRow of data) {
-        const localRow = await config.local.get(remoteRow.id)
-        if (localRow && (localRow.sync_status === 'pending' || localRow.sync_status === 'conflict')) {
-          continue
-        }
-        await config.local.put({ ...remoteRow, sync_status: 'synced' })
-      }
+      // Bulk read + bulk write (one transaction each) rather than a get/put per row — see
+      // markSynced in push.ts for the iPad IndexedDB failure per-row writes led to.
+      const localRows = await config.local.bulkGet(data.map((r) => r.id))
+      const toPut = data
+        .filter((_, i) => {
+          const localRow = localRows[i]
+          return !(localRow && (localRow.sync_status === 'pending' || localRow.sync_status === 'conflict'))
+        })
+        .map((remoteRow) => ({ ...remoteRow, sync_status: 'synced' }))
+      if (toPut.length > 0) await config.local.bulkPut(toPut)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error(`Sync pull failed for ${config.name}`, err)
@@ -45,5 +48,5 @@ export async function pullChanges(sinceIso: string | null): Promise<void> {
     }
   }
 
-  if (errors.length > 0) throw new Error(errors.join('; '))
+  if (errors.length > 0) throw new Error(summarizeErrors(errors))
 }

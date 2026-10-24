@@ -49,6 +49,16 @@ export const SYNC_TABLES: SyncTableConfig[] = [
   { name: 'businessSettings', local: db.businessSettings, remote: 'business_settings', conflictAware: true },
 ]
 
+/**
+ * Collapses repeated per-row error messages into one line each with a count, so the
+ * on-device Sync Error Detail reads "X (×3068)" instead of the same text 3,068 times.
+ */
+export function summarizeErrors(errors: string[]): string {
+  const counts = new Map<string, number>()
+  for (const message of errors) counts.set(message, (counts.get(message) ?? 0) + 1)
+  return [...counts].map(([message, n]) => (n > 1 ? `${message} (×${n})` : message)).join('; ')
+}
+
 /** Strips the local-only sync_status field before sending a row to Supabase. */
 export function stripSyncStatus<T extends { sync_status: SyncStatus }>(row: T): Omit<T, 'sync_status'> {
   const { sync_status: _sync_status, ...rest } = row
