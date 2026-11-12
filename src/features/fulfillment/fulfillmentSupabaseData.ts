@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { KitchenStatus, Order, OrderLine, OrderLineModifier } from '../../db'
 import { nowIso } from '../../db'
+import { startSafetyNetPolling } from '../../lib/stationPolling'
 import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient'
 
 /**
@@ -84,9 +85,12 @@ export function useFulfillmentQueue(): {
   bundles: Map<string, FulfillmentOrderBundle>
   connectionStatus: FulfillmentConnectionStatus
   removeOrder: (orderId: string) => void
+  /** Re-runs the queue fetch now (e.g. after an action failed because the card was stale). */
+  refresh: () => void
 } {
   const [bundles, setBundles] = useState<Map<string, FulfillmentOrderBundle>>(new Map())
   const [connectionStatus, setConnectionStatus] = useState<FulfillmentConnectionStatus>('connecting')
+  const refetchRef = useRef<(() => Promise<void>) | null>(null)
 
   const removeOrder = useCallback((orderId: string) => {
     setBundles((prev) => {
@@ -121,10 +125,11 @@ export function useFulfillmentQueue(): {
       }
 
       if (knownIds.has(order.id)) {
-        // Item/modifier lists are immutable post-creation — just patch the order fields.
+        // Item/modifier lists are immutable post-creation — just patch the order fields
+        // (skipped when unchanged: every 10s poll re-delivers every in-scope order).
         setBundles((prev) => {
           const existing = prev.get(order.id)
-          if (!existing) return prev
+          if (!existing || existing.order.updated_at === order.updated_at) return prev
           const next = new Map(prev)
           next.set(order.id, { ...existing, order })
           return next
@@ -143,14 +148,33 @@ export function useFulfillmentQueue(): {
     }
 
     async function refetch() {
+      // Snapshot before querying: anything ingested by a realtime event while this query
+      // is in flight may legitimately be missing from its result and must not be removed.
+      const knownBefore = new Set(knownIds)
       const { data, error } = await supabase.from('orders').select('*').in('kitchen_status', FULFILLMENT_STATUSES)
       if (cancelled) return
       if (error) {
         console.error('Fulfillment queue refetch failed', error)
         return
       }
-      await Promise.all(((data ?? []) as Order[]).map(ingestOrder))
+      const rows = (data ?? []) as Order[]
+      await Promise.allSettled(rows.map(ingestOrder))
+      if (cancelled) return
+
+      // Reconcile: this is what makes an order completed on ANOTHER screen (phone marks
+      // it served → the PC/tablet never gets a realtime event, per the RLS note above)
+      // drop off this one within one poll, instead of sitting there until a reload.
+      const stillInScope = new Set(rows.map((r) => r.id))
+      const gone = [...knownBefore].filter((orderId) => !stillInScope.has(orderId))
+      if (gone.length === 0) return
+      for (const orderId of gone) knownIds.delete(orderId)
+      setBundles((prev) => {
+        const next = new Map(prev)
+        for (const orderId of gone) next.delete(orderId)
+        return next
+      })
     }
+    refetchRef.current = refetch
 
     const channel = supabase
       .channel('fulfillment:orders')
@@ -168,13 +192,21 @@ export function useFulfillmentQueue(): {
         }
       })
 
+    const stopPolling = startSafetyNetPolling(() => void refetch())
+
     return () => {
       cancelled = true
+      refetchRef.current = null
+      stopPolling()
       void supabase.removeChannel(channel)
     }
   }, [])
 
-  return { bundles, connectionStatus, removeOrder }
+  const refresh = useCallback(() => {
+    void refetchRef.current?.()
+  }, [])
+
+  return { bundles, connectionStatus, removeOrder, refresh }
 }
 
 // Every mutation below sets updated_at explicitly: the `orders` table has no
@@ -223,11 +255,20 @@ function errorMessage(error: unknown): string {
   return String(error)
 }
 
+/**
+ * The RPC rejects a transition from a status that's already terminal ("Invalid
+ * fulfillment transition from served to served"). With several screens open (tablet,
+ * phone, PC), that just means another screen finished this order first and this card
+ * was stale — the goal (order done, card gone) is already met, so it's not a failure.
+ */
+const ALREADY_FINISHED = /Invalid fulfillment transition from (served|picked_up|delivered|cancelled) /
+
 async function completeOrderFulfillment(orderId: string, newKitchenStatus: 'served' | 'picked_up' | 'delivered') {
   const { error } = await supabase.rpc('complete_order_fulfillment', {
     p_order_id: orderId,
     p_new_kitchen_status: newKitchenStatus,
   })
+  if (error && ALREADY_FINISHED.test(errorMessage(error))) return
   if (error) throw new Error(errorMessage(error))
 }
 

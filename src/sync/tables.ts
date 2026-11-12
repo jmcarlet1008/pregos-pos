@@ -20,6 +20,13 @@ export interface SyncTableConfig {
  * them (there are no FK constraints — see migration notes — but pushing in this
  * order keeps a normal, non-retried cycle logically consistent).
  *
+ * The one deliberate exception: `orders` goes AFTER its line items/modifiers/discounts.
+ * A Register walk-in becomes visible to /kitchen the instant its orders row flips to
+ * kitchen_status 'preparing', and /kitchen fetches the order's lines right then. Pushed
+ * order-first, that fetch could run before the lines landed — a card with missing or no
+ * items (2026-11-12 "walk-in never reached the kitchen" report). Lines-first means the
+ * items are already in Supabase by the time the order becomes visible.
+ *
  * conflictAware is true for catalog/config tables (categories, products, modifier
  * groups/options, users, businessSettings) for the same reason it's true for
  * orders: a plain last-write-wins push blindly trusts whichever device's clock
@@ -40,14 +47,24 @@ export const SYNC_TABLES: SyncTableConfig[] = [
   { name: 'modifierOptions', local: db.modifierOptions, remote: 'modifier_options', conflictAware: true },
   { name: 'users', local: db.users, remote: 'users', conflictAware: true },
   { name: 'shifts', local: db.shifts, remote: 'shifts', conflictAware: false },
-  { name: 'orders', local: db.orders, remote: 'orders', conflictAware: true },
   { name: 'orderDiscounts', local: db.orderDiscounts, remote: 'order_discounts', conflictAware: false },
   { name: 'orderLines', local: db.orderLines, remote: 'order_lines', conflictAware: false },
   { name: 'orderLineModifiers', local: db.orderLineModifiers, remote: 'order_line_modifiers', conflictAware: false },
+  { name: 'orders', local: db.orders, remote: 'orders', conflictAware: true },
   { name: 'payments', local: db.payments, remote: 'payments', conflictAware: false },
   { name: 'stockAdjustments', local: db.stockAdjustments, remote: 'stock_adjustments', conflictAware: false },
   { name: 'businessSettings', local: db.businessSettings, remote: 'business_settings', conflictAware: true },
 ]
+
+/**
+ * Collapses repeated per-row error messages into one line each with a count, so the
+ * on-device Sync Error Detail reads "X (×3068)" instead of the same text 3,068 times.
+ */
+export function summarizeErrors(errors: string[]): string {
+  const counts = new Map<string, number>()
+  for (const message of errors) counts.set(message, (counts.get(message) ?? 0) + 1)
+  return [...counts].map(([message, n]) => (n > 1 ? `${message} (×${n})` : message)).join('; ')
+}
 
 /** Strips the local-only sync_status field before sending a row to Supabase. */
 export function stripSyncStatus<T extends { sync_status: SyncStatus }>(row: T): Omit<T, 'sync_status'> {

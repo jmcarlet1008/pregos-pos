@@ -115,7 +115,7 @@ function ColumnSection({ label, bundles, variant, actionLabel, actionColor, onAc
  */
 export function FulfillmentPage() {
   const [actionError, setActionError] = useState<string | null>(null)
-  const { bundles, connectionStatus, removeOrder } = useFulfillmentQueue()
+  const { bundles, connectionStatus, removeOrder, refresh } = useFulfillmentQueue()
 
   const bundleList = useMemo(() => Array.from(bundles.values()), [bundles])
 
@@ -164,6 +164,8 @@ export function FulfillmentPage() {
       if (removesFromView) removeOrder(orderId)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      // The card may simply be stale (changed on another screen) — re-check right away.
+      refresh()
     }
   }
 
