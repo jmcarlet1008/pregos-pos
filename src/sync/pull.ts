@@ -1,3 +1,4 @@
+import { db } from '../db'
 import { supabase } from '../lib/supabaseClient'
 import { SYNC_TABLES, summarizeErrors } from './tables'
 
@@ -31,16 +32,19 @@ export async function pullChanges(sinceIso: string | null): Promise<void> {
       if (error) throw new Error(`Pull failed for ${config.name}: ${error.message}`)
       if (!data || data.length === 0) continue
 
-      // Bulk read + bulk write (one transaction each) rather than a get/put per row — see
-      // markSynced in push.ts for the iPad IndexedDB failure per-row writes led to.
-      const localRows = await config.local.bulkGet(data.map((r) => r.id))
-      const toPut = data
-        .filter((_, i) => {
-          const localRow = localRows[i]
-          return !(localRow && (localRow.sync_status === 'pending' || localRow.sync_status === 'conflict'))
-        })
-        .map((remoteRow) => ({ ...remoteRow, sync_status: 'synced' }))
-      if (toPut.length > 0) await config.local.bulkPut(toPut)
+      // Bulk read + bulk write in one transaction rather than a get/put per row — see
+      // markSynced in push.ts for the iPad IndexedDB failure per-row writes led to — and
+      // so a local edit can't slip in between the pending check and the overwrite.
+      await db.transaction('rw', config.local, async () => {
+        const localRows = await config.local.bulkGet(data.map((r) => r.id))
+        const toPut = data
+          .filter((_, i) => {
+            const localRow = localRows[i]
+            return !(localRow && (localRow.sync_status === 'pending' || localRow.sync_status === 'conflict'))
+          })
+          .map((remoteRow) => ({ ...remoteRow, sync_status: 'synced' }))
+        if (toPut.length > 0) await config.local.bulkPut(toPut)
+      })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error(`Sync pull failed for ${config.name}`, err)

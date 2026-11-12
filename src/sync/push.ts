@@ -62,10 +62,20 @@ async function retryWithFreshOrderNumber(row: any): Promise<any> {
  * "UnknownError: Failed to delete record from object store" after a Force Resync queued
  * ~3,000 rows and they were each marked individually (2026-10-24). If this write fails,
  * the rows just stay 'pending' and are re-pushed next cycle — the upsert is idempotent.
+ *
+ * Only rows still exactly as pushed (same updated_at) are marked: a row edited locally
+ * while its table was being pushed (e.g. a cashier adding an item to an open order)
+ * must stay 'pending' so that newer edit goes up next cycle instead of being silently
+ * marked synced without ever leaving the device.
  */
-async function markSynced(config: SyncTableConfig, ids: string[]): Promise<void> {
-  if (ids.length === 0) return
-  await config.local.bulkUpdate(ids.map((key) => ({ key, changes: { sync_status: 'synced' } })))
+async function markSynced(config: SyncTableConfig, pushed: { id: string; updated_at: string }[]): Promise<void> {
+  if (pushed.length === 0) return
+  await db.transaction('rw', config.local, async () => {
+    const current = await config.local.bulkGet(pushed.map((r) => r.id))
+    const unchanged = pushed.filter((r, i) => current[i]?.updated_at === r.updated_at).map((r) => r.id)
+    if (unchanged.length === 0) return
+    await config.local.bulkUpdate(unchanged.map((key) => ({ key, changes: { sync_status: 'synced' } })))
+  })
 }
 
 /**
@@ -81,7 +91,7 @@ async function pushConflictAware(
 ): Promise<string[]> {
   const remoteById = await fetchRemoteByIds(config.remote, pendingRows.map((r) => r.id))
   const errors: string[] = []
-  const syncedIds: string[] = []
+  const synced: { id: string; updated_at: string }[] = []
 
   for (let row of pendingRows) {
     try {
@@ -107,7 +117,7 @@ async function pushConflictAware(
         ;({ error } = await supabase.from(config.remote).upsert(stripSyncStatus(row)))
       }
       if (error) throw new Error(`Push failed for ${config.name}: ${error.message}`)
-      syncedIds.push(row.id)
+      synced.push({ id: row.id, updated_at: row.updated_at })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error(`Sync push failed for ${config.name} row ${row.id}`, err)
@@ -115,7 +125,7 @@ async function pushConflictAware(
     }
   }
 
-  await markSynced(config, syncedIds)
+  await markSynced(config, synced)
   return errors
 }
 
@@ -140,13 +150,13 @@ async function pushLastWriteWins(config: SyncTableConfig, pendingRows: any[]): P
 
   const { error } = await supabase.from(config.remote).upsert(toUpsert)
   if (!error) {
-    await markSynced(config, toUpsert.map((r) => r.id))
+    await markSynced(config, toUpsert)
     return errors
   }
 
   // Batch upsert failed — fall back to one row at a time so a single bad row (e.g. one
   // referencing a parent that hasn't landed yet) doesn't block all of its siblings.
-  const syncedIds: string[] = []
+  const synced: { id: string; updated_at: string }[] = []
   for (const row of toUpsert) {
     const { error: rowError } = await supabase.from(config.remote).upsert(row)
     if (rowError) {
@@ -154,9 +164,9 @@ async function pushLastWriteWins(config: SyncTableConfig, pendingRows: any[]): P
       errors.push(`Push failed for ${config.name}: ${rowError.message}`)
       continue
     }
-    syncedIds.push(row.id)
+    synced.push({ id: row.id, updated_at: row.updated_at })
   }
-  await markSynced(config, syncedIds)
+  await markSynced(config, synced)
   return errors
 }
 
