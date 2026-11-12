@@ -9,6 +9,7 @@ import { SYNC_TABLES } from './tables'
 const SYNC_INTERVAL_MS = 30_000
 
 let cycleInFlight: Promise<void> | null = null
+let rerunRequested = false
 
 async function runCycleUnguarded(): Promise<void> {
   if (!isSupabaseConfigured || !navigator.onLine) return
@@ -32,13 +33,31 @@ async function runCycleUnguarded(): Promise<void> {
   }
 }
 
-/** Runs a pull+push cycle, coalescing overlapping calls into the in-flight one. */
-export function runSyncCycle(): Promise<void> {
-  if (!cycleInFlight) {
-    cycleInFlight = runCycleUnguarded().finally(() => {
-      cycleInFlight = null
-    })
+/**
+ * Runs a pull+push cycle. A call made while one is already in flight doesn't start a
+ * second concurrent cycle, but it does queue exactly one more right after: the in-flight
+ * cycle may already be past the step that would have picked up whatever the caller just
+ * wrote (e.g. Register's post-payment nudge landing mid-cycle, after `orders` was pushed),
+ * which would otherwise leave that walk-in waiting for the next 30s tick before /kitchen
+ * could see it. Every caller during one in-flight cycle shares that single rerun.
+ *
+ * The periodic timer passes `rerunIfBusy: false` — it just joins: a slow catch-up cycle
+ * (a big backlog taking longer than the 30s interval) must not chain into back-to-back
+ * reruns forever.
+ */
+export function runSyncCycle({ rerunIfBusy = true }: { rerunIfBusy?: boolean } = {}): Promise<void> {
+  if (cycleInFlight) {
+    if (rerunIfBusy) rerunRequested = true
+    return cycleInFlight
   }
+  cycleInFlight = (async () => {
+    do {
+      rerunRequested = false
+      await runCycleUnguarded()
+    } while (rerunRequested)
+  })().finally(() => {
+    cycleInFlight = null
+  })
   return cycleInFlight
 }
 
@@ -69,7 +88,7 @@ export function startSyncEngine(): () => void {
   void runSyncCycle()
 
   const interval = setInterval(() => {
-    void runSyncCycle()
+    void runSyncCycle({ rerunIfBusy: false })
   }, SYNC_INTERVAL_MS)
 
   function onOnline() {

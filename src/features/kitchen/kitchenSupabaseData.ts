@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KitchenStatus, Order, OrderLine, OrderLineModifier } from '../../db'
 import { nowIso } from '../../db'
+import { startSafetyNetPolling } from '../../lib/stationPolling'
 import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient'
 
 /**
@@ -139,6 +140,7 @@ export function useKitchenQueue(onNewOrder?: (order: Order) => void, onOrderEdit
     // changed the items (and needs a lines refetch + onOrderEdited alert) or is just an
     // unrelated field patch (queue_priority drag, prep_time_override, ...).
     const editedAtByOrderId = new Map<string, string | null>()
+    const firstIngestInFlight = new Set<string>()
     let firstLoadDone = false
 
     async function ingestOrder(rawOrder: Order) {
@@ -158,43 +160,65 @@ export function useKitchenQueue(onNewOrder?: (order: Order) => void, onOrderEdit
       }
 
       const alreadyKnown = knownActiveIds.has(rawOrder.id)
+      if (!alreadyKnown) {
+        // The poll and a realtime event can deliver the same brand-new order at the same
+        // moment; only one of them may run its first ingest, or it'd chime twice.
+        if (firstIngestInFlight.has(rawOrder.id)) return
+        firstIngestInFlight.add(rawOrder.id)
+        try {
+          await ingestNewOrder(rawOrder)
+        } finally {
+          firstIngestInFlight.delete(rawOrder.id)
+        }
+        return
+      }
+
       const order = await assignOrderNumberIfMissing(rawOrder)
       if (cancelled) return
 
-      if (alreadyKnown) {
-        const previousEditedAt = editedAtByOrderId.get(order.id) ?? null
-        const itemsChanged = order.items_edited_at !== previousEditedAt
-        editedAtByOrderId.set(order.id, order.items_edited_at)
+      const previousEditedAt = editedAtByOrderId.get(order.id) ?? null
+      const itemsChanged = order.items_edited_at !== previousEditedAt
+      editedAtByOrderId.set(order.id, order.items_edited_at)
 
-        if (itemsChanged) {
-          const { lines, modifiersByLineId } = await fetchLinesForOrder(order.id)
-          if (cancelled) return
-          setBundles((prev) => {
-            const existing = prev.get(order.id)
-            if (!existing) return prev
-            const next = new Map(prev)
-            next.set(order.id, { order, lines, modifiersByLineId })
-            return next
-          })
-          // Only alert for a genuine edit landing, not the clear-at-Ready transition
-          // (items_edited_at going back to null on markReady).
-          if (order.items_edited_at != null) onOrderEditedRef.current?.(order)
-          return
-        }
-
-        // Nothing about the items changed — just patch the order fields.
+      if (itemsChanged) {
+        const { lines, modifiersByLineId } = await fetchLinesForOrder(order.id)
+        if (cancelled) return
         setBundles((prev) => {
           const existing = prev.get(order.id)
           if (!existing) return prev
           const next = new Map(prev)
-          next.set(order.id, { ...existing, order })
+          next.set(order.id, { order, lines, modifiersByLineId })
           return next
         })
+        // Only alert for a genuine edit landing, not the clear-at-Ready transition
+        // (items_edited_at going back to null on markReady).
+        if (order.items_edited_at != null) onOrderEditedRef.current?.(order)
         return
       }
 
+      // Nothing about the items changed — just patch the order fields. Skipped when the
+      // row is identical (every 10s poll re-delivers every active order) so the screen
+      // doesn't re-render for nothing.
+      setBundles((prev) => {
+        const existing = prev.get(order.id)
+        if (!existing) return prev
+        if (existing.order.updated_at === order.updated_at && existing.order.order_number === order.order_number) return prev
+        const next = new Map(prev)
+        next.set(order.id, { ...existing, order })
+        return next
+      })
+    }
+
+    async function ingestNewOrder(rawOrder: Order) {
+      const order = await assignOrderNumberIfMissing(rawOrder)
+      if (cancelled) return
       const { lines, modifiersByLineId } = await fetchLinesForOrder(order.id)
       if (cancelled) return
+      // An order with no items yet means its lines haven't reached Supabase (a Register
+      // walk-in pushed before its lines on an older client, or mid-retry). Don't lock in
+      // an empty card — lines are only fetched once per known order — and let the next
+      // poll/event try again instead.
+      if (lines.length === 0) return
       knownActiveIds.add(order.id)
       editedAtByOrderId.set(order.id, order.items_edited_at)
       setBundles((prev) => {
@@ -209,14 +233,36 @@ export function useKitchenQueue(onNewOrder?: (order: Order) => void, onOrderEdit
     }
 
     async function refetch() {
+      // Snapshot before querying: anything ingested by a realtime event while this query
+      // is in flight may legitimately be missing from its result and must not be removed.
+      const knownBefore = new Set(knownActiveIds)
       const { data, error } = await supabase.from('orders').select('*').in('kitchen_status', ACTIVE_KITCHEN_STATUSES)
       if (cancelled) return
       if (error) {
         console.error('Kitchen queue refetch failed', error)
         return
       }
-      await Promise.all(((data ?? []) as Order[]).map(ingestOrder))
-      if (!cancelled) firstLoadDone = true
+      const rows = (data ?? []) as Order[]
+      await Promise.allSettled(rows.map(ingestOrder))
+      if (cancelled) return
+      firstLoadDone = true
+
+      // Reconcile: a card that was showing but is no longer in the active set left the
+      // queue without this screen hearing about it — e.g. cancelled from Order Management
+      // ('cancelled' is outside anon's RLS-visible set, so Realtime never delivers that
+      // update here), or an event missed while the connection was silently dead.
+      const stillActive = new Set(rows.map((r) => r.id))
+      const gone = [...knownBefore].filter((orderId) => !stillActive.has(orderId))
+      if (gone.length === 0) return
+      for (const orderId of gone) {
+        knownActiveIds.delete(orderId)
+        editedAtByOrderId.delete(orderId)
+      }
+      setBundles((prev) => {
+        const next = new Map(prev)
+        for (const orderId of gone) next.delete(orderId)
+        return next
+      })
     }
 
     const channel = supabase
@@ -235,8 +281,11 @@ export function useKitchenQueue(onNewOrder?: (order: Order) => void, onOrderEdit
         }
       })
 
+    const stopPolling = startSafetyNetPolling(() => void refetch())
+
     return () => {
       cancelled = true
+      stopPolling()
       void supabase.removeChannel(channel)
     }
   }, [])
