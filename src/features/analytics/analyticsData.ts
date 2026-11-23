@@ -21,6 +21,7 @@ import {
 } from '../../lib/dateRange'
 import { netOfVat, seniorPwdDiscountAmount, seniorPwdDiscountedPrice } from '../../lib/discount'
 import { CHANNEL_LABEL, FULFILLMENT_LABEL, getFulfillmentKind, type FulfillmentKind } from '../../lib/orderWorkflow'
+import type { ItemRow } from './itemsAnalytics'
 
 // Date-range and CSV helpers below live in src/lib (dateRange.ts/csv.ts) so other
 // features — e.g. register/orderHistoryData.ts — can reuse them without a cross-feature
@@ -660,4 +661,18 @@ export function buildDetailedSalesCsv(
   })
 
   return [header, ...rows].map((row) => row.map(csvCell).join(',')).join('\n')
+}
+
+/** "Export items CSV": one row per item × size/version (see itemsAnalytics.ts's computeItemRows). */
+export function buildItemsCsv(rows: ItemRow[]): string {
+  const header = ['Item', 'Category', 'Size / Variant', 'Qty Sold', 'Gross Sales', '% of Total Qty']
+  const body = rows.map((r) => [
+    r.item,
+    r.category,
+    r.variant ?? '',
+    String(r.quantity),
+    r.sales.toFixed(2),
+    r.shareOfTotal.toFixed(1),
+  ])
+  return [header, ...body].map((row) => row.map(csvCell).join(',')).join('\n')
 }

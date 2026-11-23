@@ -4,6 +4,7 @@ import { db } from '../../db'
 import {
   addDays,
   buildDetailedSalesCsv,
+  buildItemsCsv,
   buildOrdersCsv,
   computeBirBreakdown,
   computeChannelFulfillmentBreakdown,
@@ -28,11 +29,25 @@ import {
   type FulfillmentFilter,
 } from './analyticsData'
 import { BirBreakdownPanel } from './BirBreakdownPanel'
+import { CategoryBreakdownPanel } from './CategoryBreakdownPanel'
+import { CategoryOverviewCards } from './CategoryOverviewCards'
 import { ChannelFulfillmentBreakdownPanel } from './ChannelFulfillmentBreakdownPanel'
 import { ChannelFulfillmentFilter } from './ChannelFulfillmentFilter'
+import { DailyMetricsPanel } from './DailyMetricsPanel'
 import { DateRangeFilter, type DatePreset } from './DateRangeFilter'
 import { HourlySalesChart } from './HourlySalesChart'
 import { ItemProfitList } from './ItemProfitList'
+import { ItemSalesTable } from './ItemSalesTable'
+import {
+  buildMenuIndex,
+  computeCancelled,
+  computeHourlyActivity,
+  computeItemAnalytics,
+  computeItemRows,
+  computeOrderMetrics,
+  countSeniorPwdOrders,
+  previousPeriod,
+} from './itemsAnalytics'
 import { KpiCards } from './KpiCards'
 import { PaymentSplitPanel } from './PaymentSplitPanel'
 import { ProfitByDayChart } from './ProfitByDayChart'
@@ -58,6 +73,11 @@ export function AnalyticsPage() {
   const orderLineModifiers = useLiveQuery(() => db.orderLineModifiers.toArray()) ?? []
   const modifierOptions = useLiveQuery(() => db.modifierOptions.toArray()) ?? []
   const modifierOptionCostById = new Map(modifierOptions.map((m) => [m.id, m.cost_adjustment]))
+  // Item/category metrics (Prompt 16.5) — read-only, see itemsAnalytics.ts.
+  const categories = useLiveQuery(() => db.categories.toArray()) ?? []
+  const modifierGroups = useLiveQuery(() => db.modifierGroups.toArray()) ?? []
+  const voidedOrders = useLiveQuery(() => db.orders.where('status').equals('voided').toArray()) ?? []
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
 
   const [view, setView] = useState<AnalyticsView>('overview')
   const [chartMode, setChartMode] = useState<ChartMode>('today')
@@ -117,6 +137,28 @@ export function AnalyticsPage() {
     modifierOptionCostById,
   )
 
+  // ---------- Item & category metrics (new; nothing above depends on these) ----------
+  const menuIndex = buildMenuIndex({ categories, products, modifierGroups, modifierOptions })
+  const prevRange = previousPeriod(rangeStart, rangeEnd)
+  const prevOrders = filterOrdersInRange(categoryFilteredOrders, prevRange.start, prevRange.end)
+  const itemAnalytics = computeItemAnalytics(filteredOrders, orderLines, orderLineModifiers, menuIndex)
+  const prevItemAnalytics = computeItemAnalytics(prevOrders, orderLines, orderLineModifiers, menuIndex)
+  const prevCategoryTotals = new Map(prevItemAnalytics.categories.map((c) => [c.id, { quantity: c.quantity, sales: c.sales }]))
+  const itemRows = computeItemRows(itemAnalytics)
+  const orderMetrics = computeOrderMetrics(filteredOrders, orderLines)
+  const prevOrderMetrics = computeOrderMetrics(prevOrders, orderLines)
+  const hourlyActivity = computeHourlyActivity(filteredOrders)
+  const cancelled = computeCancelled(
+    filterOrdersInRange(filterByChannelAndFulfillment(voidedOrders, channelFilter, fulfillmentFilter), rangeStart, rangeEnd),
+  )
+  const seniorPwd = { orders: countSeniorPwdOrders(filteredOrders, orderDiscounts), discount: birBreakdown.discountGranted }
+  const rangeDays = Math.round((rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000)
+  const comparisonLabel = preset === 'today' ? 'vs yesterday' : `vs previous ${rangeDays} day${rangeDays === 1 ? '' : 's'}`
+
+  function handleExportItems() {
+    downloadCsv(`pregos-items_${toDateInputValue(rangeStart)}_to_${toDateInputValue(rangeEnd)}.csv`, buildItemsCsv(itemRows))
+  }
+
   function handleExport() {
     const csv = buildOrdersCsv(filteredOrders, payments, users, orderLines, orderDiscounts)
     downloadCsv(`pregos-sales_${toDateInputValue(rangeStart)}_to_${toDateInputValue(rangeEnd)}.csv`, csv)
@@ -159,10 +201,8 @@ export function AnalyticsPage() {
         </div>
       </div>
 
-      <KpiCards data={kpiData} />
-
-      <HourlySalesChart mode={chartMode} onModeChange={setChartMode} data={chartData} />
-
+      {/* The filters sit at the top because they also drive the item/category sections
+          right below them; every section after those keeps its original order. */}
       <DateRangeFilter
         preset={preset}
         start={rangeStart}
@@ -188,6 +228,37 @@ export function AnalyticsPage() {
         onChannelChange={setChannelFilter}
         onFulfillmentChange={setFulfillmentFilter}
       />
+
+      {view === 'overview' && (
+        <>
+          <CategoryOverviewCards
+            categories={itemAnalytics.categories}
+            previousById={prevCategoryTotals}
+            comparisonLabel={comparisonLabel}
+            selectedId={selectedCategoryId ?? itemAnalytics.categories[0]?.id ?? null}
+            onSelect={setSelectedCategoryId}
+          />
+          <CategoryBreakdownPanel
+            categories={itemAnalytics.categories}
+            selectedId={selectedCategoryId}
+            onSelect={setSelectedCategoryId}
+          />
+          <ItemSalesTable rows={itemRows} onExport={handleExportItems} />
+          <DailyMetricsPanel
+            current={orderMetrics}
+            previous={prevOrderMetrics}
+            comparisonLabel={comparisonLabel}
+            hourly={hourlyActivity}
+            paymentSplit={paymentSplit}
+            seniorPwd={seniorPwd}
+            cancelled={cancelled}
+          />
+        </>
+      )}
+
+      <KpiCards data={kpiData} />
+
+      <HourlySalesChart mode={chartMode} onModeChange={setChartMode} data={chartData} />
 
       {view === 'overview' && (
         <>
